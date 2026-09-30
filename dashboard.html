@@ -164,6 +164,15 @@
     th:first-child, td:first-child { text-align: left; }
     th { color: var(--ink); font-weight: 600; position: sticky; top: 0; background: var(--surface); }
 
+    .back {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--ink-2);
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+    .back:hover { color: var(--ink); text-decoration: underline; }
+
     .footnote { margin-top: 24px; color: var(--muted); font-size: 0.8rem; }
 
     @media (max-width: 900px) {
@@ -181,6 +190,7 @@
 </head>
 <body>
   <div class="wrap">
+    <a class="back" href="index.html">← Back to portfolio</a>
 
     <!-- ===== HEADER + DATE RANGE ===== -->
     <header class="top">
