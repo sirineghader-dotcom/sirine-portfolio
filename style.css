@@ -168,6 +168,52 @@ h2 {
   word-break: break-word; /* long emails wrap instead of overflowing on phones */
 }
 
+/* ===== Project cards ===== */
+.projects {
+  display: grid;
+  gap: 16px;
+}
+
+.project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.project-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.project-card .label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.project-card .title {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.project-card .desc {
+  color: var(--muted);
+}
+
+.project-card .more {
+  margin-top: 4px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 /* ===== Footer ===== */
 .footer {
   text-align: center;

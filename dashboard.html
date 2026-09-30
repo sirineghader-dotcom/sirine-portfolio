@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marketing Performance Dashboard</title>
+
+  <!-- Chart.js: a free library that draws charts from lists of numbers -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    /* ===== Colors =====
+       Every color lives here as a "token". Dark mode swaps the values,
+       and the rest of the page just refers to the token names. */
+    :root {
+      --page: #f9f9f7;
+      --surface: #fcfcfb;
+      --ink: #0b0b0b;
+      --ink-2: #52514e;
+      --muted: #898781;
+      --grid: #e1e0d9;
+      --axis: #c3c2b7;
+      --border: rgba(11, 11, 11, 0.10);
+      --series: #2a78d6;        /* the blue used for chart lines and bars */
+      --series-hover: #5598e7;
+      --good: #006300;          /* delta text when a number moves the good way */
+      --bad: #d03b3b;
+      --accent-soft: #cde2fb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --page: #0d0d0d;
+        --surface: #1a1a19;
+        --ink: #ffffff;
+        --ink-2: #c3c2b7;
+        --muted: #898781;
+        --grid: #2c2c2a;
+        --axis: #383835;
+        --border: rgba(255, 255, 255, 0.10);
+        --series: #3987e5;
+        --series-hover: #6da7ec;
+        --good: #0ca30c;
+        --bad: #e66767;
+        --accent-soft: #104281;
+      }
+    }
+    :root[data-theme="dark"] {
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --series: #3987e5;
+      --series-hover: #6da7ec;
+      --good: #0ca30c;
+      --bad: #e66767;
+      --accent-soft: #104281;
+    }
+
+    /* ===== Base ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--page);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 16px 48px;
+    }
+
+    /* ===== Header ===== */
+    .top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    h1 { font-size: 1.6rem; font-weight: 700; }
+    .subtitle { color: var(--ink-2); font-size: 0.95rem; }
+    .badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--ink);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* ===== Date range switch ===== */
+    .range {
+      display: inline-flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 3px;
+    }
+    .range button {
+      font: inherit;
+      font-size: 0.9rem;
+      border: 0;
+      background: transparent;
+      color: var(--ink-2);
+      padding: 6px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .range button:hover { color: var(--ink); }
+    .range button[aria-pressed="true"] {
+      background: var(--page);
+      color: var(--ink);
+      font-weight: 600;
+      box-shadow: 0 0 0 1px var(--border);
+    }
+
+    /* ===== Cards (shared by KPI tiles and charts) ===== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    /* ===== KPI tiles: 4 across on desktop, 2 on tablets, 1 on phones ===== */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .kpi-label { color: var(--ink-2); font-size: 0.9rem; }
+    .kpi-value { font-size: 2rem; font-weight: 650; margin: 4px 0; }
+    .kpi-delta { font-size: 0.85rem; color: var(--ink-2); }
+    .kpi-delta .change { font-weight: 600; }
+    .kpi-delta .change.good { color: var(--good); }
+    .kpi-delta .change.bad { color: var(--bad); }
+
+    /* ===== Charts: side by side on desktop, stacked on phones ===== */
+    .charts {
+      display: grid;
+      grid-template-columns: 3fr 2fr;
+      gap: 16px;
+    }
+    .card h2 { font-size: 1rem; font-weight: 600; }
+    .card .hint { color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+    .chart-box { position: relative; height: 280px; }
+
+    /* "View data table": the same numbers as the chart, for screen readers and copying */
+    details { margin-top: 12px; font-size: 0.85rem; color: var(--ink-2); }
+    summary { cursor: pointer; }
+    .table-scroll { max-height: 220px; overflow: auto; margin-top: 8px; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--grid); }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--ink); font-weight: 600; position: sticky; top: 0; background: var(--surface); }
+
+    .back {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--ink-2);
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+    .back:hover { color: var(--ink); text-decoration: underline; }
+
+    .footnote { margin-top: 24px; color: var(--muted); font-size: 0.8rem; }
+
+    @media (max-width: 900px) {
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      .charts { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .range { width: 100%; }
+      .range button { flex: 1; padding: 6px 4px; }
+      .kpis { gap: 12px; }
+      .card { padding: 16px; }
+      .kpi-value { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="index.html">← Back to portfolio</a>
+
+    <!-- ===== HEADER + DATE RANGE ===== -->
+    <header class="top">
+      <div>
+        <h1>Marketing performance</h1>
+        <p class="subtitle" id="period-text"></p>
+        <span class="badge">Demo · sample data, not connected to live accounts</span>
+      </div>
+      <div class="range" role="group" aria-label="Date range">
+        <button type="button" data-weeks="4" aria-pressed="true">Last 4 weeks</button>
+        <button type="button" data-weeks="8" aria-pressed="false">Last 8 weeks</button>
+        <button type="button" data-weeks="12" aria-pressed="false">Last 12 weeks</button>
+      </div>
+    </header>
+
+    <!-- ===== KPI TILES (the numbers are filled in by the script below) ===== -->
+    <section class="kpis" aria-label="Key metrics">
+      <div class="card"><p class="kpi-label">Ad spend</p><p class="kpi-value" id="kpi-spend">–</p><p class="kpi-delta" id="delta-spend"></p></div>
+      <div class="card"><p class="kpi-label">ROAS</p><p class="kpi-value" id="kpi-roas">–</p><p class="kpi-delta" id="delta-roas"></p></div>
+      <div class="card"><p class="kpi-label">Revenue attributed</p><p class="kpi-value" id="kpi-revenue">–</p><p class="kpi-delta" id="delta-revenue"></p></div>
+      <div class="card"><p class="kpi-label">Booked calls</p><p class="kpi-value" id="kpi-calls">–</p><p class="kpi-delta" id="delta-calls"></p></div>
+    </section>
+
+    <!-- ===== CHARTS ===== -->
+    <section class="charts">
+      <div class="card">
+        <h2>Daily ad spend</h2>
+        <p class="hint">US dollars per day</p>
+        <div class="chart-box"><canvas id="spend-chart" role="img" aria-label="Line chart of daily ad spend"></canvas></div>
+        <details>
+          <summary>View data table</summary>
+          <div class="table-scroll"><table id="spend-table"></table></div>
+        </details>
+      </div>
+      <div class="card">
+        <h2>ROAS by week</h2>
+        <p class="hint">Revenue attributed ÷ ad spend</p>
+        <div class="chart-box"><canvas id="roas-chart" role="img" aria-label="Bar chart of return on ad spend by week"></canvas></div>
+        <details>
+          <summary>View data table</summary>
+          <div class="table-scroll"><table id="roas-table"></table></div>
+        </details>
+      </div>
+    </section>
+
+    <p class="footnote">
+      All figures are generated sample data for demonstration. ROAS = revenue attributed ÷ ad spend.
+    </p>
+  </div>
+
+  <script>
+    /* =========================================================
+       1. SAMPLE DATA
+       One row per day: { date, spend, revenue, calls }.
+       Later, replace this section with real rows from your ad
+       platform or CRM in the same shape and the rest still works.
+       ========================================================= */
+
+    // A "seeded" random number generator: same seed, same numbers, every visit.
+    function seededRandom(seed) {
+      return function () {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    const TOTAL_WEEKS = 24;                  // enough history to compare 12 weeks vs the 12 before
+    const LAST_DAY = new Date(2026, 8, 27);  // Sunday, Sep 27 2026 (months count from 0)
+
+    function makeSampleData() {
+      const rand = seededRandom(42);
+      const days = TOTAL_WEEKS * 7;
+      const rows = [];
+      for (let i = 0; i < days; i++) {
+        const date = new Date(LAST_DAY);
+        date.setDate(LAST_DAY.getDate() - (days - 1 - i));
+        const weekend = date.getDay() === 0 || date.getDay() === 6;
+        const progress = i / (days - 1);                     // 0 at the start, 1 at the end
+
+        // Budget grows slowly over time; weekends get less spend.
+        const spend = (420 + 260 * progress) * (weekend ? 0.7 : 1) * (0.88 + rand() * 0.24);
+        // ROAS improves from about 2.6x to 3.5x as campaigns are optimized.
+        const roas = (2.6 + 0.9 * progress) * (weekend ? 0.9 : 1) * (0.85 + rand() * 0.3);
+        // Roughly one booked call per $110 of spend.
+        const calls = Math.round((spend / 110) * (0.7 + rand() * 0.6));
+
+        rows.push({ date, spend: Math.round(spend), revenue: Math.round(spend * roas), calls });
+      }
+      return rows;
+    }
+
+    const dailyData = makeSampleData();
+
+    /* =========================================================
+       2. HELPERS: formatting and adding numbers up
+       ========================================================= */
+    const money = (n) => "$" + Math.round(n).toLocaleString("en-US");
+    const moneyShort = (n) => n >= 1000 ? "$" + (n / 1000).toFixed(1) + "K" : money(n);
+    const shortDate = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const sum = (rows, key) => rows.reduce((total, r) => total + r[key], 0);
+
+    function totals(rows) {
+      const spend = sum(rows, "spend");
+      const revenue = sum(rows, "revenue");
+      return { spend, revenue, roas: revenue / spend, calls: sum(rows, "calls") };
+    }
+
+    // Group days into Monday–Sunday weeks.
+    function byWeek(rows) {
+      const weeks = [];
+      for (let i = 0; i < rows.length; i += 7) {
+        const days = rows.slice(i, i + 7);
+        weeks.push({ start: days[0].date, ...totals(days) });
+      }
+      return weeks;
+    }
+
+    // Read a color token from the CSS so charts match light or dark mode.
+    const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+    /* =========================================================
+       3. KPI TILES
+       ========================================================= */
+    function showDelta(id, now, before, weeks, upIsGood) {
+      const pct = ((now - before) / before) * 100;
+      const up = pct >= 0;
+      // Color only when "up" clearly means good or bad; spend is neutral.
+      const tone = upIsGood === null ? "" : (up === upIsGood ? "good" : "bad");
+      const el = document.getElementById(id);
+      el.innerHTML = "";
+      const change = document.createElement("span");
+      change.className = "change " + tone;
+      change.textContent = (up ? "▲ " : "▼ ") + Math.abs(pct).toFixed(1) + "%";
+      el.append(change, " vs prior " + weeks + " weeks");
+    }
+
+    function updateKpis(current, previous, weeks) {
+      const now = totals(current);
+      const before = totals(previous);
+      document.getElementById("kpi-spend").textContent = moneyShort(now.spend);
+      document.getElementById("kpi-roas").textContent = now.roas.toFixed(2) + "x";
+      document.getElementById("kpi-revenue").textContent = moneyShort(now.revenue);
+      document.getElementById("kpi-calls").textContent = now.calls.toLocaleString("en-US");
+      showDelta("delta-spend", now.spend, before.spend, weeks, null);
+      showDelta("delta-roas", now.roas, before.roas, weeks, true);
+      showDelta("delta-revenue", now.revenue, before.revenue, weeks, true);
+      showDelta("delta-calls", now.calls, before.calls, weeks, true);
+    }
+
+    /* =========================================================
+       4. DATA TABLES (the "View data table" sections)
+       ========================================================= */
+    function fillTable(id, headers, rows) {
+      const table = document.getElementById(id);
+      table.innerHTML = "";
+      const head = table.createTHead().insertRow();
+      headers.forEach((h) => { const th = document.createElement("th"); th.textContent = h; head.appendChild(th); });
+      const body = table.createTBody();
+      rows.forEach((cells) => {
+        const tr = body.insertRow();
+        cells.forEach((c) => { tr.insertCell().textContent = c; });
+      });
+    }
+
+    /* =========================================================
+       5. CHARTS
+       ========================================================= */
+
+    // Draws a thin vertical line where you hover on the line chart.
+    const crosshair = {
+      id: "crosshair",
+      afterDatasetsDraw(chart) {
+        const active = chart.tooltip && chart.tooltip.getActiveElements();
+        if (!active || !active.length) return;
+        const { ctx, chartArea } = chart;
+        const x = active[0].element.x;
+        ctx.save();
+        ctx.strokeStyle = token("--axis");
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+        ctx.restore();
+      },
+    };
+
+    // Writes the most recent value next to the last point or bar.
+    const latestLabel = {
+      id: "latestLabel",
+      afterDatasetsDraw(chart, args, opts) {
+        const meta = chart.getDatasetMeta(0);
+        const last = meta.data[meta.data.length - 1];
+        if (!last) return;
+        const value = chart.data.datasets[0].data[meta.data.length - 1];
+        const { ctx } = chart;
+        ctx.save();
+        ctx.fillStyle = token("--ink");
+        ctx.font = "600 12px system-ui, -apple-system, 'Segoe UI', sans-serif";
+        if (opts.beside) {
+          // Line chart: put the label just to the right of the last point.
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText(opts.format(value), last.x + 8, last.y);
+        } else {
+          // Bar chart: put the label just above the last bar.
+          ctx.textAlign = "center";
+          ctx.fillText(opts.format(value), last.x, last.y - 8);
+        }
+        ctx.restore();
+      },
+    };
+
+    let spendChart, roasChart;
+
+    function sharedOptions() {
+      const tick = { color: token("--muted"), font: { size: 12 } };
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }, // one series per chart, so the title names it
+          tooltip: {
+            backgroundColor: token("--surface"),
+            borderColor: token("--border"),
+            borderWidth: 1,
+            titleColor: token("--ink-2"),
+            bodyColor: token("--ink"),
+            bodyFont: { weight: "600" },
+            padding: 10,
+            displayColors: false,
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, border: { color: token("--axis") }, ticks: { ...tick, maxRotation: 0, autoSkipPadding: 16 } },
+          y: { beginAtZero: true, grid: { color: token("--grid") }, border: { display: false }, ticks: tick },
+        },
+      };
+    }
+
+    function buildCharts() {
+      if (spendChart) spendChart.destroy();
+      if (roasChart) roasChart.destroy();
+
+      const series = token("--series");
+
+      // Line chart: daily ad spend
+      const lineOptions = sharedOptions();
+      lineOptions.interaction = { mode: "index", intersect: false }; // hover anywhere to read the nearest day
+      lineOptions.layout = { padding: { top: 8, right: 44 } }; // room for the end label
+      lineOptions.scales.y.ticks.callback = (v) => money(v);
+      lineOptions.plugins.tooltip.callbacks = { label: (c) => "Spend " + money(c.parsed.y) };
+      lineOptions.plugins.latestLabel = { format: money, beside: true };
+
+      spendChart = new Chart(document.getElementById("spend-chart"), {
+        type: "line",
+        data: { labels: [], datasets: [{
+          data: [],
+          borderColor: series,
+          borderWidth: 2,
+          backgroundColor: series + "1a",   // the same blue at ~10% opacity for the area wash
+          fill: true,
+          tension: 0.25,
+          cubicInterpolationMode: "monotone", // smooth curve that never overshoots the real values
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointBackgroundColor: series,
+          pointBorderColor: token("--surface"),
+          pointBorderWidth: 2,
+        }] },
+        options: lineOptions,
+        plugins: [crosshair, latestLabel],
+      });
+
+      // Bar chart: ROAS by week
+      const barOptions = sharedOptions();
+      barOptions.interaction = { mode: "index", intersect: false };
+      barOptions.layout = { padding: { top: 24 } };
+      barOptions.scales.y.ticks.callback = (v) => v + "x";
+      barOptions.plugins.tooltip.callbacks = {
+        title: (items) => "Week of " + items[0].label,
+        label: (c) => "ROAS " + c.parsed.y.toFixed(2) + "x",
+      };
+      barOptions.plugins.latestLabel = { format: (v) => v.toFixed(2) + "x" };
+
+      roasChart = new Chart(document.getElementById("roas-chart"), {
+        type: "bar",
+        data: { labels: [], datasets: [{
+          data: [],
+          backgroundColor: series,
+          hoverBackgroundColor: token("--series-hover"),
+          maxBarThickness: 24,
+          borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 },
+          borderSkipped: "start",   // keeps the bottom of each bar square on the baseline
+        }] },
+        options: barOptions,
+        plugins: [latestLabel],
+      });
+    }
+
+    /* =========================================================
+       6. PUT IT ALL TOGETHER
+       Picks the date range, then updates tiles, charts and tables.
+       ========================================================= */
+    let selectedWeeks = 4;
+
+    function render() {
+      const days = selectedWeeks * 7;
+      const current = dailyData.slice(-days);
+      const previous = dailyData.slice(-days * 2, -days);
+      const weeks = byWeek(current);
+
+      document.getElementById("period-text").textContent =
+        shortDate(current[0].date) + " – " + shortDate(current[current.length - 1].date) + ", 2026";
+
+      updateKpis(current, previous, selectedWeeks);
+
+      spendChart.data.labels = current.map((r) => shortDate(r.date));
+      spendChart.data.datasets[0].data = current.map((r) => r.spend);
+      spendChart.update();
+
+      roasChart.data.labels = weeks.map((w) => shortDate(w.start));
+      roasChart.data.datasets[0].data = weeks.map((w) => +w.roas.toFixed(2));
+      roasChart.update();
+
+      fillTable("spend-table", ["Date", "Ad spend"],
+        current.map((r) => [shortDate(r.date), money(r.spend)]));
+      fillTable("roas-table", ["Week of", "Spend", "Revenue", "ROAS"],
+        weeks.map((w) => [shortDate(w.start), money(w.spend), money(w.revenue), w.roas.toFixed(2) + "x"]));
+    }
+
+    // Date range buttons
+    document.querySelectorAll(".range button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".range button").forEach((b) => b.setAttribute("aria-pressed", "false"));
+        btn.setAttribute("aria-pressed", "true");
+        selectedWeeks = Number(btn.dataset.weeks);
+        render();
+      });
+    });
+
+    // Redraw charts in the right colors if light/dark mode changes.
+    function rebuild() { buildCharts(); render(); }
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rebuild);
+    new MutationObserver(rebuild).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    rebuild();
+  </script>
+</body>
+</html>
