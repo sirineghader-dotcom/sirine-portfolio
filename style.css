@@ -1,0 +1,178 @@
+/* ===== Colors & settings =====
+   Change these values to restyle the whole site. */
+:root {
+  --bg: #ffffff;
+  --bg-alt: #f5f3ff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --accent: #6d28d9;
+  --accent-soft: #ede9fe;
+  --card: #ffffff;
+  --border: #e5e7eb;
+}
+
+/* Dark mode: used automatically if the visitor's device is set to dark */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111827;
+    --bg-alt: #1a1f33;
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --accent: #a78bfa;
+    --accent-soft: #2e2659;
+    --card: #1f2937;
+    --border: #374151;
+  }
+}
+
+/* ===== Base styles ===== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth; /* smooth scrolling when clicking "Get in touch" */
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.7;
+}
+
+/* Keeps content centered and not too wide on big screens */
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ===== Header ===== */
+.hero {
+  padding: 120px 0 100px;
+  text-align: center;
+  background: linear-gradient(135deg, var(--accent-soft), var(--bg));
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.hero h1 {
+  font-size: clamp(2.5rem, 8vw, 4rem); /* shrinks on phones, grows on desktops */
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 8px 0 12px;
+}
+
+.tagline {
+  font-size: 1.25rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 32px;
+}
+
+.button {
+  display: inline-block;
+  padding: 12px 28px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: transform 0.2s;
+}
+
+.button:hover {
+  transform: translateY(-2px);
+}
+
+/* ===== Sections ===== */
+.section {
+  padding: 80px 0;
+}
+
+.section-alt {
+  background: var(--bg-alt);
+}
+
+h2 {
+  font-size: 2rem;
+  margin-bottom: 24px;
+}
+
+.section p {
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+/* ===== Skills: displayed as rounded "chips" ===== */
+.skills {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.skills li {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ===== Contact cards ===== */
+.contact-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.contact-card {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.contact-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.contact-card .label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.contact-card .value {
+  font-weight: 600;
+  color: var(--accent);
+  word-break: break-word; /* long emails wrap instead of overflowing on phones */
+}
+
+/* ===== Footer ===== */
+.footer {
+  text-align: center;
+  padding: 32px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  border-top: 1px solid var(--border);
+}
