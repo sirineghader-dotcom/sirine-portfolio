@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Case study: an AI lead-to-booking system built with GoHighLevel and n8n.">
+  <title>AI Lead System | Sirine Ghader</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="case-hero">
+    <div class="container">
+      <a class="back-link" href="index.html#projects">← Back to portfolio</a>
+      <p class="eyebrow">Case study · GoHighLevel + n8n</p>
+      <h1>AI lead-to-booking system</h1>
+      <p class="tagline">From form fill to booked call, with no manual follow-up.</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== THE PROBLEM ===== -->
+    <section class="section">
+      <div class="container">
+        <h2>The problem</h2>
+        <p>
+          Small service businesses lose leads in the gap between "someone filled in a
+          form" and "someone booked a call". Follow-up is manual, slow and easy to forget,
+          and sales calls rarely get written up.
+        </p>
+        <p>
+          I built a starter system that closes that gap automatically, using
+          GoHighLevel for the CRM and n8n with AI for call summaries.
+        </p>
+      </div>
+    </section>
+
+    <!-- ===== HOW IT WORKS: one <li> per step ===== -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>How it works</h2>
+        <ol class="flow">
+          <li>
+            <strong>Lead fills in the form</strong>
+            <span>A funnel page with a lead form and separate SMS and email consent checkboxes.</span>
+          </li>
+          <li>
+            <strong>Contact is tagged and a deal is created</strong>
+            <span>A workflow adds a "new lead" tag and opens an opportunity in the first pipeline stage.</span>
+          </li>
+          <li>
+            <strong>Automatic follow-up</strong>
+            <span>A welcome email goes out with the booking link, then a timed reminder if no call is booked.</span>
+          </li>
+          <li>
+            <strong>Call is booked</strong>
+            <span>Booking on the calendar moves the deal forward and stops the reminders.</span>
+          </li>
+          <li>
+            <strong>AI answers questions</strong>
+            <span>A Conversation AI bot handles common FAQs and hands off to a person when needed.</span>
+          </li>
+          <li>
+            <strong>AI summarizes the sales call</strong>
+            <span>An n8n workflow sends the call notes to an AI agent that returns a structured summary and next steps.</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ===== WHAT I BUILT ===== -->
+    <section class="section">
+      <div class="container">
+        <h2>What I built</h2>
+        <div class="facts">
+          <div class="fact">
+            <span class="label">CRM</span>
+            <span class="value">Pipeline, tags &amp; calendar</span>
+          </div>
+          <div class="fact">
+            <span class="label">Automations</span>
+            <span class="value">3 GHL workflows</span>
+          </div>
+          <div class="fact">
+            <span class="label">AI</span>
+            <span class="value">FAQ bot + call summarizer</span>
+          </div>
+          <div class="fact">
+            <span class="label">Tools</span>
+            <span class="value">GoHighLevel, n8n, Gemini</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== WHAT I LEARNED ===== -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>What I learned</h2>
+        <ul class="plain">
+          <li>Test every workflow with a real test contact and check what actually ran, not just what was set up.</li>
+          <li>Compliance comes first in the US: consent checkboxes, STOP opt-out, quiet hours and email authentication.</li>
+          <li>Structured AI output (fixed fields) makes summaries easy to reuse in a CRM.</li>
+          <li>Document the build so it can be rebuilt quickly for the next client.</li>
+        </ul>
+        <a class="button" href="index.html#contact">Want one for your business? Get in touch</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2026 Sirine Ghader</p>
+  </footer>
+
+</body>
+</html>
