@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lead Source Dashboard</title>
+  <meta name="description" content="Which lead sources bring in leads, booked calls and closed revenue — updated daily from GoHighLevel.">
+
+  <!-- Chart.js: a free library that draws charts from lists of numbers -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    /* ===== Colors =====
+       Every color lives here as a "token". Dark mode swaps the values,
+       and the rest of the page just refers to the token names. */
+    :root {
+      --page: #f9f9f7;
+      --surface: #fcfcfb;
+      --ink: #0b0b0b;
+      --ink-2: #52514e;
+      --muted: #898781;
+      --grid: #e1e0d9;
+      --axis: #c3c2b7;
+      --border: rgba(11, 11, 11, 0.10);
+      --series: #2a78d6;        /* the blue used for single-series bars */
+      --series-hover: #5598e7;
+      --track: #f0efec;         /* empty part of a funnel bar */
+      --good: #006300;
+      --bad: #d03b3b;
+      --accent-soft: #cde2fb;
+      /* Pipeline stages: blues = still moving forward, grays = dropped out.
+         Darker = further along. */
+      --st-qualified: #86b6ef;
+      --st-booked: #3987e5;
+      --st-followup: #256abf;
+      --st-closed: #104281;
+      --st-disq: #a8a69e;
+      --st-cancelled: #8f8d86;
+      --st-noshow: #75736d;
+      --st-lost: #5c5a55;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --page: #0d0d0d;
+        --surface: #1a1a19;
+        --ink: #ffffff;
+        --ink-2: #c3c2b7;
+        --muted: #898781;
+        --grid: #2c2c2a;
+        --axis: #383835;
+        --border: rgba(255, 255, 255, 0.10);
+        --series: #3987e5;
+        --series-hover: #6da7ec;
+        --track: #262624;
+        --good: #0ca30c;
+        --bad: #e66767;
+        --accent-soft: #104281;
+        --st-qualified: #1c5cab;
+        --st-booked: #2a78d6;
+        --st-followup: #5598e7;
+        --st-closed: #9ec5f4;
+        --st-disq: #5c5a55;
+        --st-cancelled: #75736d;
+        --st-noshow: #8f8d86;
+        --st-lost: #a8a69e;
+      }
+    }
+    :root[data-theme="dark"] {
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --series: #3987e5;
+      --series-hover: #6da7ec;
+      --track: #262624;
+      --good: #0ca30c;
+      --bad: #e66767;
+      --accent-soft: #104281;
+      --st-qualified: #1c5cab;
+      --st-booked: #2a78d6;
+      --st-followup: #5598e7;
+      --st-closed: #9ec5f4;
+      --st-disq: #5c5a55;
+      --st-cancelled: #75736d;
+      --st-noshow: #8f8d86;
+      --st-lost: #a8a69e;
+    }
+
+    /* ===== Base ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--page);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 16px 48px; }
+    .back { display: inline-block; margin-bottom: 16px; color: var(--ink-2); font-size: 0.9rem; text-decoration: none; }
+    .back:hover { color: var(--ink); text-decoration: underline; }
+
+    header { margin-bottom: 24px; }
+    h1 { font-size: 1.6rem; font-weight: 700; }
+    .subtitle { color: var(--ink-2); font-size: 0.95rem; }
+
+    /* ===== Cards ===== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .step { color: var(--muted); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+    .card h2 { font-size: 1.1rem; font-weight: 650; margin-top: 2px; }
+    .hint { color: var(--ink-2); font-size: 0.9rem; margin: 2px 0 14px; max-width: 70ch; }
+    .chart-box { position: relative; height: 360px; }
+
+    /* ===== Headline: the budget answer ===== */
+    .answer { font-size: 1.15rem; line-height: 1.55; max-width: 70ch; margin: 6px 0 16px; }
+    .answer strong { font-weight: 650; }
+    .groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .group { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--page); }
+    .group h3 { font-size: 0.95rem; font-weight: 650; margin-bottom: 8px; }
+    .group h3 .icon { display: inline-block; width: 1.2em; }
+    .group.up h3 { color: var(--good); }
+    .group.down h3 { color: var(--bad); }
+    .group ul { list-style: none; }
+    .group li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px solid var(--grid); font-size: 0.92rem; }
+    .group li:first-child { border-top: 0; }
+    .group li span:last-child { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .caveat { color: var(--ink-2); font-size: 0.85rem; margin-top: 12px; max-width: 80ch; }
+
+    /* ===== Legend for the stacked chart ===== */
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; color: var(--ink-2); margin-bottom: 10px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+    .legend .sep { color: var(--muted); }
+
+    .toggle { display: inline-flex; background: var(--page); border: 1px solid var(--border); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
+    .toggle button { font: inherit; font-size: 0.85rem; border: 0; background: transparent; color: var(--ink-2); padding: 5px 12px; border-radius: 7px; cursor: pointer; }
+    .toggle button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
+
+    /* ===== Funnels: one small funnel per source ===== */
+    .funnels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .funnel { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--page); }
+    .funnel h3 { font-size: 0.95rem; font-weight: 650; display: flex; justify-content: space-between; gap: 8px; }
+    .funnel h3 span { color: var(--ink-2); font-weight: 500; font-size: 0.85rem; white-space: nowrap; }
+    .f-row { margin-top: 8px; }
+    .f-label { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; color: var(--ink-2); }
+    .f-label b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .f-track { height: 10px; background: var(--track); border-radius: 0 4px 4px 0; margin-top: 3px; }
+    .f-bar { height: 100%; background: var(--series); border-radius: 0 4px 4px 0; min-width: 2px; }
+    .f-rate { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+    /* ===== Tables ===== */
+    details { margin-top: 14px; font-size: 0.85rem; color: var(--ink-2); }
+    summary { cursor: pointer; }
+    .table-scroll { overflow-x: auto; margin-top: 8px; }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+    th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--ink); font-weight: 600; }
+    tfoot td { font-weight: 600; color: var(--ink); }
+
+    .removed td { white-space: normal; vertical-align: top; }
+    .removed td:first-child { width: 15em; }
+    .removed td:nth-child(2) { font-weight: 600; color: var(--ink); width: 11em; white-space: nowrap; }
+    .removed th:last-child { text-align: left; }
+    .removed td:last-child { text-align: left; color: var(--ink-2); }
+    .removed tr.none td { color: var(--muted); font-weight: 400; }
+    .removed h3 { font-size: 0.95rem; font-weight: 650; margin: 18px 0 4px; }
+    .flow { font-size: 0.95rem; margin-bottom: 4px; }
+
+    .footnote { margin-top: 8px; color: var(--muted); font-size: 0.8rem; }
+    .error { color: var(--bad); }
+
+    @media (max-width: 900px) {
+      .funnels { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .groups, .funnels { grid-template-columns: 1fr; }
+      .card { padding: 16px; }
+      .chart-box { height: 340px; }
+      .answer { font-size: 1.05rem; }
+      /* Cleaning tables: one stacked block per rule instead of three squeezed columns */
+      .removed thead { display: none; }
+      .removed tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--grid); }
+      .removed td { display: block; width: auto !important; border: 0; padding: 1px 0; text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="index.html">← Back to portfolio</a>
+
+    <header>
+      <h1>Which lead sources are worth the budget?</h1>
+      <p class="subtitle" id="updated">Loading the latest numbers…</p>
+    </header>
+
+    <!-- 1. THE ANSWER -->
+    <section class="card" aria-labelledby="h-answer">
+      <p class="step">The short answer</p>
+      <h2 id="h-answer">Where to put next month's budget</h2>
+      <p class="answer" id="answer"></p>
+      <div class="groups" id="groups"></div>
+      <p class="caveat" id="caveat"></p>
+    </section>
+
+    <!-- 2. VOLUME -->
+    <section class="card" aria-labelledby="h-volume">
+      <p class="step">Step 1 · Volume</p>
+      <h2 id="h-volume">How many leads each source brought in</h2>
+      <p class="hint">Real, unique leads only. Duplicates, internal tests and other businesses' records are removed (see the bottom of the page).</p>
+      <div class="chart-box"><canvas id="volume-chart" role="img" aria-label="Bar chart of leads by source"></canvas></div>
+      <details><summary>View data table</summary><div class="table-scroll"><table id="volume-table"></table></div></details>
+    </section>
+
+    <!-- 3. PIPELINE -->
+    <section class="card" aria-labelledby="h-pipeline">
+      <p class="step">Step 2 · Pipeline</p>
+      <h2 id="h-pipeline">Where each source's deals are sitting right now</h2>
+      <p class="hint">Every deal in the 8-stage sales pipeline, by the stage it is in today. Blue stages are still moving forward, with won deals on the left; gray stages have dropped out.</p>
+      <div class="toggle" role="group" aria-label="Show as">
+        <button type="button" data-mode="count" aria-pressed="true">Number of deals</button>
+        <button type="button" data-mode="share" aria-pressed="false">Share of deals</button>
+      </div>
+      <div class="legend" id="stage-legend"></div>
+      <div class="chart-box"><canvas id="pipeline-chart" role="img" aria-label="Stacked bar chart of deals in each pipeline stage, by source"></canvas></div>
+      <details><summary>View data table</summary><div class="table-scroll"><table id="pipeline-table"></table></div></details>
+    </section>
+
+    <!-- 4. CONVERSION -->
+    <section class="card" aria-labelledby="h-funnel">
+      <p class="step">Step 3 · Conversion</p>
+      <h2 id="h-funnel">How far each source's leads get</h2>
+      <p class="hint">Each funnel starts with that source's leads. The percentage under each bar is how many made it from the step before. Sorted by the share of leads that became a sale.</p>
+      <div class="funnels" id="funnels"></div>
+      <details><summary>View data table</summary><div class="table-scroll"><table id="funnel-table"></table></div></details>
+    </section>
+
+    <!-- 5. REVENUE -->
+    <section class="card" aria-labelledby="h-revenue">
+      <p class="step">Step 4 · Revenue</p>
+      <h2 id="h-revenue">Closed revenue from each source</h2>
+      <p class="hint">Total value of won deals, highest first. Hover a bar to see the number of sales and revenue per lead.</p>
+      <div class="chart-box"><canvas id="revenue-chart" role="img" aria-label="Bar chart of closed revenue by source, sorted highest first"></canvas></div>
+      <details><summary>View data table</summary><div class="table-scroll"><table id="revenue-table"></table></div></details>
+    </section>
+
+    <!-- 6. DATA CLEANING -->
+    <section class="card removed" aria-labelledby="h-removed">
+      <p class="step">Behind the numbers</p>
+      <h2 id="h-removed">Records removed, and why</h2>
+      <p class="flow" id="flow"></p>
+      <h3>Removed from every chart</h3>
+      <div class="table-scroll"><table id="removed-table"></table></div>
+      <h3>Kept, but handled with care</h3>
+      <div class="table-scroll"><table id="adjusted-table"></table></div>
+      <p class="footnote">“Checked — none found” rows are checks that run on every refresh; they're listed so you can see they were looked for.</p>
+    </section>
+
+    <p class="footnote" id="method">
+      Data comes from the agency's GoHighLevel account and refreshes automatically every morning.
+      A lead's source is the channel recorded when they first came in. There is no ad-spend data,
+      so the advice is based on leads, conversion and closed revenue.
+    </p>
+  </div>
+
+  <script>
+    /* =========================================================
+       1. HELPERS
+       ========================================================= */
+    const money = (v) => "$" + Math.round(v).toLocaleString("en-US");
+    const moneyShort = (v) => v >= 1000 ? "$" + (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : money(v);
+    const pct = (part, whole) => whole ? Math.round((part / whole) * 100) + "%" : "–";
+    const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const el = (id) => document.getElementById(id);
+
+    function fillTable(id, headers, rows, foot) {
+      const table = el(id);
+      table.innerHTML = "";
+      const head = table.createTHead().insertRow();
+      headers.forEach((h) => { const th = document.createElement("th"); th.textContent = h; head.appendChild(th); });
+      const body = table.createTBody();
+      rows.forEach((cells) => { const tr = body.insertRow(); cells.forEach((c) => { tr.insertCell().textContent = c; }); });
+      if (foot) { const tr = table.createTFoot().insertRow(); foot.forEach((c) => { tr.insertCell().textContent = c; }); }
+    }
+
+    // Stage colors, and the order they stack in: furthest along first, drop-outs last.
+    const STAGES = [
+      { name: "Closed", label: "Closed (won)", color: "--st-closed" },
+      { name: "Follow Up", label: "Follow Up", color: "--st-followup" },
+      { name: "Booked call", label: "Booked call", color: "--st-booked" },
+      { name: "Qualified Opt In", label: "Qualified Opt In", color: "--st-qualified" },
+      { name: "Lost", label: "Lost", color: "--st-lost" },
+      { name: "No Show", label: "No Show", color: "--st-noshow" },
+      { name: "Cancelled", label: "Cancelled", color: "--st-cancelled" },
+      { name: "Disqualified", label: "Disqualified", color: "--st-disq" },
+    ];
+
+    let data, rows;
+    let pipelineMode = "count";
+    const charts = {};
+
+    /* =========================================================
+       2. THE ANSWER
+       Ranks sources by closed revenue per lead: what one more lead
+       from that source has been worth so far.
+       ========================================================= */
+    function renderAnswer() {
+      const ranked = [...rows].sort((a, b) => b.perLead - a.perLead);
+      const third = Math.ceil(ranked.length / 3);
+      const top = ranked.slice(0, third);
+      const bottom = ranked.slice(ranked.length - third);
+      const middle = ranked.slice(third, ranked.length - third);
+      const names = (list) => list.map((r) => r.source).join(", ").replace(/, ([^,]*)$/, " and $1");
+      const worst = bottom[bottom.length - 1];
+      const busiest = [...rows].sort((a, b) => b.leads - a.leads)[0];
+
+      el("answer").innerHTML = "";
+      const p = el("answer");
+      p.append("Move budget toward ");
+      const s1 = document.createElement("strong"); s1.textContent = names(top); p.append(s1);
+      p.append(`. Each lead from these has turned into about ${money(top[top.length - 1].perLead)}–${money(top[0].perLead)} in closed sales. `);
+      p.append("Pull back from ");
+      const s2 = document.createElement("strong"); s2.textContent = names(bottom); p.append(s2);
+      p.append(`: ${worst.source} leads have returned only ${money(worst.perLead)} each.`);
+      if (busiest !== top[0] && bottom.includes(busiest)) {
+        p.append(` ${busiest.source} sends the most leads (${busiest.leads}), but few of them buy.`);
+      }
+
+      const group = (cls, icon, title, list) => {
+        const div = document.createElement("div");
+        div.className = "group " + cls;
+        const h = document.createElement("h3");
+        const i = document.createElement("span"); i.className = "icon"; i.setAttribute("aria-hidden", "true"); i.textContent = icon;
+        h.append(i, title);
+        const ul = document.createElement("ul");
+        list.forEach((r) => {
+          const li = document.createElement("li");
+          const a = document.createElement("span"); a.textContent = r.source;
+          const b = document.createElement("span"); b.textContent = money(r.perLead) + " per lead";
+          li.append(a, b); ul.append(li);
+        });
+        div.append(h, ul);
+        return div;
+      };
+      el("groups").replaceChildren(
+        group("up", "▲", "Spend more", top),
+        group("hold", "■", "Keep steady", middle),
+        group("down", "▼", "Spend less", bottom),
+      );
+
+      const minWon = Math.min(...rows.map((r) => r.won));
+      const maxWon = Math.max(...rows.map((r) => r.won));
+      el("caveat").textContent =
+        `Worth knowing: each source has only ${minWon}–${maxWon} closed sales so far, so one big deal can move a source up or down. ` +
+        `Shift budget in steps (for example 10–20% a month) and check back here. ` +
+        `“Per lead” = closed revenue ÷ leads from that source.`;
+    }
+
+    /* =========================================================
+       3. CHARTS
+       ========================================================= */
+    function baseOptions() {
+      const tick = { color: token("--ink-2"), font: { size: 12 } };
+      return {
+        indexAxis: "y",                // horizontal bars: source names stay readable on phones
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        layout: { padding: { right: 56 } },   // room for the value at the end of each bar
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: token("--surface"),
+            borderColor: token("--border"),
+            borderWidth: 1,
+            titleColor: token("--ink"),
+            bodyColor: token("--ink-2"),
+            titleFont: { weight: "600" },
+            padding: 10,
+            displayColors: false,
+          },
+        },
+        scales: {
+          x: { beginAtZero: true, grid: { color: token("--grid") }, border: { display: false }, ticks: { color: token("--muted"), font: { size: 12 } } },
+          y: { grid: { display: false }, border: { color: token("--axis") }, ticks: tick },
+        },
+      };
+    }
+
+    // Writes each bar's value just past its end.
+    const endLabels = {
+      id: "endLabels",
+      afterDatasetsDraw(chart, args, opts) {
+        if (!opts.format) return;
+        const meta = chart.getDatasetMeta(chart.data.datasets.length - 1);
+        const { ctx } = chart;
+        ctx.save();
+        ctx.fillStyle = token("--ink");
+        ctx.font = "600 12px system-ui, -apple-system, 'Segoe UI', sans-serif";
+        ctx.textBaseline = "middle";
+        meta.data.forEach((bar, i) => ctx.fillText(opts.format(i), bar.x + 6, bar.y));
+        ctx.restore();
+      },
+    };
+
+    function singleBar(id, list, value, format, tooltipLines) {
+      if (charts[id]) charts[id].destroy();
+      const options = baseOptions();
+      options.scales.x.ticks.callback = (v) => format(v);
+      options.plugins.endLabels = { format: (i) => format(value(list[i])) };
+      options.plugins.tooltip.callbacks = { label: (c) => tooltipLines(list[c.dataIndex]) };
+      charts[id] = new Chart(el(id), {
+        type: "bar",
+        data: {
+          labels: list.map((r) => r.source),
+          datasets: [{
+            data: list.map(value),
+            backgroundColor: token("--series"),
+            hoverBackgroundColor: token("--series-hover"),
+            borderRadius: 4,
+            borderSkipped: "start",   // square on the baseline, rounded at the end
+            barPercentage: 0.8,
+            categoryPercentage: 0.85,
+            maxBarThickness: 26,
+          }],
+        },
+        options,
+        plugins: [endLabels],
+      });
+    }
+
+    function renderVolume() {
+      const list = [...rows].sort((a, b) => b.leads - a.leads);
+      singleBar("volume-chart", list, (r) => r.leads, (v) => v.toLocaleString("en-US"),
+        (r) => [`${r.leads} leads`, `${r.deals} became deals (${pct(r.deals, r.leads)})`]);
+      fillTable("volume-table", ["Source", "Leads", "Became a deal", "Not in the pipeline yet"],
+        list.map((r) => [r.source, r.leads, r.deals, r.leads - r.deals]));
+    }
+
+    function renderPipeline() {
+      const list = [...rows].sort((a, b) => b.deals - a.deals);
+      const share = pipelineMode === "share";
+      if (charts.pipeline) charts.pipeline.destroy();
+      const options = baseOptions();
+      options.layout.padding.right = share ? 8 : 40;
+      options.scales.x.stacked = true;
+      options.scales.y.stacked = true;
+      if (share) { options.scales.x.max = 100; options.scales.x.ticks.callback = (v) => v + "%"; }
+      options.interaction = { mode: "nearest", intersect: true };
+      options.plugins.tooltip.callbacks = {
+        title: (items) => list[items[0].dataIndex].source,
+        label: (c) => {
+          const r = list[c.dataIndex];
+          const n = r.stages[STAGES[c.datasetIndex].name];
+          return `${STAGES[c.datasetIndex].label}: ${n} of ${r.deals} deals (${pct(n, r.deals)})`;
+        },
+      };
+      options.plugins.endLabels = share ? {} : { format: (i) => list[i].deals };
+      const surface = token("--surface");
+      charts.pipeline = new Chart(el("pipeline-chart"), {
+        type: "bar",
+        data: {
+          labels: list.map((r) => r.source),
+          datasets: STAGES.map((s) => ({
+            label: s.label,
+            data: list.map((r) => share ? (r.stages[s.name] / r.deals) * 100 : r.stages[s.name]),
+            backgroundColor: token(s.color),
+            borderColor: surface,
+            borderWidth: { right: 2 },   // thin gap between segments
+            borderSkipped: false,
+            barPercentage: 0.8,
+            categoryPercentage: 0.85,
+            maxBarThickness: 26,
+          })),
+        },
+        options,
+        plugins: [endLabels],
+      });
+
+      el("stage-legend").replaceChildren(...STAGES.map((s, i) => {
+        const span = document.createElement("span");
+        const sw = document.createElement("i"); sw.style.background = token(s.color);
+        span.append(sw, s.label);
+        return span;
+      }));
+
+      // Table in pipeline order, with a total that must match the stage counts.
+      const order = data.stageOrder;
+      fillTable("pipeline-table", ["Source", ...order, "Total deals"],
+        list.map((r) => [r.source, ...order.map((st) => r.stages[st]), r.deals]),
+        ["All sources", ...order.map((st) => rows.reduce((t, r) => t + r.stages[st], 0)), rows.reduce((t, r) => t + r.deals, 0)]);
+    }
+
+    function renderFunnels() {
+      const steps = data.funnelSteps;
+      const list = [...rows].sort((a, b) => b.won / b.leads - a.won / a.leads);
+      el("funnels").replaceChildren(...list.map((r) => {
+        const card = document.createElement("div");
+        card.className = "funnel";
+        const h = document.createElement("h3");
+        const sub = document.createElement("span"); sub.textContent = pct(r.won, r.leads) + " became a sale";
+        h.append(r.source, sub);
+        card.append(h);
+        steps.forEach((step, i) => {
+          const n = r.funnel[i];
+          const row = document.createElement("div"); row.className = "f-row";
+          const label = document.createElement("div"); label.className = "f-label";
+          const name = document.createElement("span"); name.textContent = step;
+          const num = document.createElement("b"); num.textContent = n;
+          label.append(name, num);
+          const track = document.createElement("div"); track.className = "f-track";
+          const bar = document.createElement("div"); bar.className = "f-bar";
+          bar.style.width = (r.leads ? (n / r.leads) * 100 : 0) + "%";
+          bar.title = `${step}: ${n} of ${r.leads} leads`;
+          track.append(bar);
+          row.append(label, track);
+          if (i > 0) {
+            const rate = document.createElement("div"); rate.className = "f-rate";
+            rate.textContent = `${pct(n, r.funnel[i - 1])} of ${steps[i - 1].toLowerCase()}`;
+            row.append(rate);
+          }
+          card.append(row);
+        });
+        return card;
+      }));
+
+      const headers = ["Source"];
+      for (let i = 1; i < steps.length; i++) headers.push(`${steps[i - 1]} → ${steps[i]}`);
+      headers.push("Lead → Won");
+      fillTable("funnel-table", headers, list.map((r) => {
+        const cells = [r.source];
+        for (let i = 1; i < steps.length; i++) cells.push(`${pct(r.funnel[i], r.funnel[i - 1])} (${r.funnel[i]}/${r.funnel[i - 1]})`);
+        cells.push(pct(r.won, r.leads));
+        return cells;
+      }));
+    }
+
+    function renderRevenue() {
+      const list = [...rows].sort((a, b) => b.revenue - a.revenue);
+      singleBar("revenue-chart", list, (r) => r.revenue, moneyShort, (r) => [
+        `${money(r.revenue)} from ${r.wonWithValue} sale${r.wonWithValue === 1 ? "" : "s"}`,
+        `${money(r.perLead)} per lead`,
+        ...(r.won > r.wonWithValue ? [`+${r.won - r.wonWithValue} sale(s) with no usable value`] : []),
+      ]);
+      fillTable("revenue-table", ["Source", "Closed revenue", "Won deals", "Won deals with a usable value", "Average sale", "Revenue per lead"],
+        list.map((r) => [r.source, money(r.revenue), r.won, r.wonWithValue, r.wonWithValue ? money(r.revenue / r.wonWithValue) : "–", money(r.perLead)]));
+    }
+
+    /* =========================================================
+       4. DATA CLEANING TABLES
+       ========================================================= */
+    function renderCleaning() {
+      const c = data.cleaning;
+      el("flow").textContent =
+        `Started with ${c.rawContacts} contacts and ${c.rawDeals} deals in the account. ` +
+        `After cleaning: ${c.keptContacts} real leads and ${c.keptDeals} deals, all shown above.`;
+      const kind = { contacts: "contacts", deals: "deals", revenue: "deals", info: "deals" };
+      const fill = (id, list) => {
+        fillTable(id, ["What", "How many", "Why"], list.map((r) => [
+          r.rule, r.count ? `${r.count} ${r.count === 1 ? kind[r.kind].slice(0, -1) : kind[r.kind]}` : "Checked — none found", r.reason,
+        ]));
+        el(id).querySelectorAll("tbody tr").forEach((tr, i) => { if (!list[i].count) tr.className = "none"; });
+      };
+      fill("removed-table", c.removed);
+      fill("adjusted-table", c.adjusted);
+    }
+
+    /* =========================================================
+       5. PUT IT ALL TOGETHER
+       ========================================================= */
+    function renderAll() {
+      renderAnswer();
+      renderVolume();
+      renderPipeline();
+      renderFunnels();
+      renderRevenue();
+      renderCleaning();
+    }
+
+    document.querySelectorAll(".toggle button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".toggle button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+        pipelineMode = btn.dataset.mode;
+        renderPipeline();
+      });
+    });
+
+    // Redraw charts in the right colors if light/dark mode changes.
+    const redraw = () => { if (data) { renderVolume(); renderPipeline(); renderRevenue(); } };
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+    new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+    fetch("data/dashboard-data.json", { cache: "no-cache" })
+      .then((res) => { if (!res.ok) throw new Error(res.status); return res.json(); })
+      .then((json) => {
+        data = json;
+        rows = data.sources.map((r) => ({ ...r, perLead: r.leads ? r.revenue / r.leads : 0 }));
+        const when = new Date(data.generatedAt);
+        el("updated").textContent = `${data.cleaning.keptContacts} leads from ${rows.length} sources · updated ` +
+          when.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+        renderAll();
+      })
+      .catch(() => {
+        el("updated").innerHTML = '<span class="error">The data couldn’t be loaded. Please refresh the page.</span>';
+      });
+  </script>
+</body>
+</html>

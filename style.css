@@ -222,3 +222,107 @@ h2 {
   font-size: 0.9rem;
   border-top: 1px solid var(--border);
 }
+
+/* ===== Case study page ===== */
+.back-link {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.case-hero {
+  padding: 64px 0 48px;
+  background: linear-gradient(135deg, var(--accent-soft), var(--bg));
+}
+
+.case-hero h1 {
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 8px 0 12px;
+}
+
+.case-hero .tagline {
+  margin-bottom: 0;
+}
+
+/* Numbered steps showing the lead's journey */
+.flow {
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 12px;
+}
+
+.flow li {
+  counter-increment: step;
+  position: relative;
+  padding: 16px 20px 16px 64px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.flow li::before {
+  content: counter(step);
+  position: absolute;
+  left: 20px;
+  top: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  display: grid;
+  place-items: center;
+}
+
+.flow strong {
+  display: block;
+}
+
+.flow span {
+  color: var(--muted);
+}
+
+/* Small stat-style cards for the results */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 x 2 grid */
+  gap: 16px;
+}
+
+@media (max-width: 500px) {
+  .facts {
+    grid-template-columns: 1fr; /* one column on phones */
+  }
+}
+
+.fact {
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.fact .label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.fact .value {
+  display: block;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.section ul.plain {
+  padding-left: 20px;
+  margin-bottom: 16px;
+}
