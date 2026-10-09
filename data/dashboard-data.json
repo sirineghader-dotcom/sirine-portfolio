@@ -1,0 +1,359 @@
+{
+  "generatedAt": "2026-10-09T09:27:12Z",
+  "pipeline": "Sales Pipeline",
+  "stageOrder": [
+    "Qualified Opt In",
+    "Booked call",
+    "Follow Up",
+    "Closed",
+    "No Show",
+    "Cancelled",
+    "Lost",
+    "Disqualified"
+  ],
+  "funnelSteps": [
+    "Leads",
+    "Entered the pipeline",
+    "Qualified",
+    "Booked a call",
+    "Attended the call",
+    "Won"
+  ],
+  "sources": [
+    {
+      "source": "Billboard",
+      "leads": 37,
+      "deals": 24,
+      "stages": {
+        "Qualified Opt In": 4,
+        "Booked call": 5,
+        "Follow Up": 5,
+        "Closed": 4,
+        "No Show": 2,
+        "Cancelled": 1,
+        "Lost": 2,
+        "Disqualified": 1
+      },
+      "funnel": [
+        37,
+        24,
+        23,
+        19,
+        11,
+        4
+      ],
+      "won": 4,
+      "wonWithValue": 4,
+      "revenue": 40000
+    },
+    {
+      "source": "Cold Email",
+      "leads": 27,
+      "deals": 22,
+      "stages": {
+        "Qualified Opt In": 3,
+        "Booked call": 2,
+        "Follow Up": 5,
+        "Closed": 2,
+        "No Show": 3,
+        "Cancelled": 2,
+        "Lost": 0,
+        "Disqualified": 5
+      },
+      "funnel": [
+        27,
+        22,
+        17,
+        14,
+        7,
+        2
+      ],
+      "won": 2,
+      "wonWithValue": 2,
+      "revenue": 13500
+    },
+    {
+      "source": "Facebook Ad",
+      "leads": 37,
+      "deals": 24,
+      "stages": {
+        "Qualified Opt In": 4,
+        "Booked call": 5,
+        "Follow Up": 2,
+        "Closed": 3,
+        "No Show": 4,
+        "Cancelled": 2,
+        "Lost": 2,
+        "Disqualified": 2
+      },
+      "funnel": [
+        37,
+        24,
+        22,
+        18,
+        7,
+        3
+      ],
+      "won": 3,
+      "wonWithValue": 2,
+      "revenue": 7000
+    },
+    {
+      "source": "Google Search",
+      "leads": 34,
+      "deals": 21,
+      "stages": {
+        "Qualified Opt In": 6,
+        "Booked call": 5,
+        "Follow Up": 3,
+        "Closed": 4,
+        "No Show": 0,
+        "Cancelled": 0,
+        "Lost": 1,
+        "Disqualified": 2
+      },
+      "funnel": [
+        34,
+        21,
+        19,
+        13,
+        8,
+        4
+      ],
+      "won": 4,
+      "wonWithValue": 4,
+      "revenue": 15500
+    },
+    {
+      "source": "Instagram Ad",
+      "leads": 29,
+      "deals": 22,
+      "stages": {
+        "Qualified Opt In": 6,
+        "Booked call": 1,
+        "Follow Up": 5,
+        "Closed": 5,
+        "No Show": 1,
+        "Cancelled": 0,
+        "Lost": 2,
+        "Disqualified": 2
+      },
+      "funnel": [
+        29,
+        22,
+        20,
+        14,
+        12,
+        5
+      ],
+      "won": 5,
+      "wonWithValue": 4,
+      "revenue": 31500
+    },
+    {
+      "source": "LinkedIn Outreach",
+      "leads": 22,
+      "deals": 16,
+      "stages": {
+        "Qualified Opt In": 5,
+        "Booked call": 0,
+        "Follow Up": 2,
+        "Closed": 2,
+        "No Show": 1,
+        "Cancelled": 1,
+        "Lost": 4,
+        "Disqualified": 1
+      },
+      "funnel": [
+        22,
+        16,
+        15,
+        10,
+        8,
+        2
+      ],
+      "won": 2,
+      "wonWithValue": 2,
+      "revenue": 20000
+    },
+    {
+      "source": "Referral",
+      "leads": 46,
+      "deals": 30,
+      "stages": {
+        "Qualified Opt In": 5,
+        "Booked call": 7,
+        "Follow Up": 4,
+        "Closed": 3,
+        "No Show": 3,
+        "Cancelled": 4,
+        "Lost": 2,
+        "Disqualified": 2
+      },
+      "funnel": [
+        46,
+        30,
+        28,
+        23,
+        9,
+        3
+      ],
+      "won": 3,
+      "wonWithValue": 3,
+      "revenue": 19250
+    },
+    {
+      "source": "Webinar",
+      "leads": 33,
+      "deals": 22,
+      "stages": {
+        "Qualified Opt In": 3,
+        "Booked call": 6,
+        "Follow Up": 3,
+        "Closed": 4,
+        "No Show": 3,
+        "Cancelled": 0,
+        "Lost": 1,
+        "Disqualified": 2
+      },
+      "funnel": [
+        33,
+        22,
+        20,
+        17,
+        8,
+        4
+      ],
+      "won": 4,
+      "wonWithValue": 3,
+      "revenue": 33000
+    },
+    {
+      "source": "Website Form",
+      "leads": 29,
+      "deals": 23,
+      "stages": {
+        "Qualified Opt In": 8,
+        "Booked call": 3,
+        "Follow Up": 1,
+        "Closed": 1,
+        "No Show": 1,
+        "Cancelled": 0,
+        "Lost": 2,
+        "Disqualified": 7
+      },
+      "funnel": [
+        29,
+        23,
+        16,
+        8,
+        4,
+        1
+      ],
+      "won": 1,
+      "wonWithValue": 1,
+      "revenue": 11000
+    }
+  ],
+  "typicalDeal": 7250,
+  "cleaning": {
+    "rawContacts": 369,
+    "rawDeals": 247,
+    "keptContacts": 294,
+    "keptDeals": 204,
+    "removed": [
+      {
+        "rule": "Other businesses' records",
+        "kind": "contacts",
+        "count": 48,
+        "reason": "The GoHighLevel account is shared with other businesses. Only leads tagged \u201cdash-project\u201d belong to this agency."
+      },
+      {
+        "rule": "Internal and test leads",
+        "kind": "contacts",
+        "count": 15,
+        "reason": "Tagged \u201cinternal\u201d or named like a test (test, demo, fake). These are the team filling in its own forms, not real prospects."
+      },
+      {
+        "rule": "Duplicate contacts",
+        "kind": "contacts",
+        "count": 12,
+        "reason": "The same person (same name and company, or same email/phone) was entered twice, usually with a different source. Kept the first entry so each person counts once, credited to the source that brought them in first."
+      },
+      {
+        "rule": "Leads with no source",
+        "kind": "contacts",
+        "count": 0,
+        "reason": "Can\u2019t be credited to any channel, so they can\u2019t inform the budget."
+      },
+      {
+        "rule": "Other businesses' deals",
+        "kind": "deals",
+        "count": 43,
+        "reason": "Deals belonging to other businesses in the shared account."
+      },
+      {
+        "rule": "Deals in another pipeline",
+        "kind": "deals",
+        "count": 0,
+        "reason": "Only the 8-stage \u201cSales Pipeline\u201d is reported."
+      },
+      {
+        "rule": "Deals without a valid lead",
+        "kind": "deals",
+        "count": 0,
+        "reason": "Attached to no contact, or to a contact removed above (internal, duplicate, no source)."
+      },
+      {
+        "rule": "Second deal for the same lead",
+        "kind": "deals",
+        "count": 0,
+        "reason": "One lead is counted once in the pipeline."
+      },
+      {
+        "rule": "Deals with impossible dates",
+        "kind": "deals",
+        "count": 0,
+        "reason": "Created in the future, or moved to a stage before they were created."
+      }
+    ],
+    "adjusted": [
+      {
+        "rule": "Source spellings merged",
+        "kind": "info",
+        "count": 0,
+        "reason": "The same channel typed differently (capitals, spaces, plural) is combined under one name. No lead is removed."
+      },
+      {
+        "rule": "Won deals with a $0 value",
+        "kind": "revenue",
+        "count": 1,
+        "reason": "Marked won but no price was entered. Counted as a won deal; left out of revenue because the real amount is unknown."
+      },
+      {
+        "rule": "Won deals with an unrealistic value",
+        "kind": "revenue",
+        "count": 2,
+        "reason": "Recorded at $145,000, more than 5\u00d7 the typical deal of $7,250 \u2014 almost certainly a typo. Counted as a won deal; left out of revenue."
+      },
+      {
+        "rule": "Open or lost deals with odd values",
+        "kind": "info",
+        "count": 12,
+        "reason": "8 at $0 and 4 at an unrealistic amount. They don\u2019t affect closed revenue, so they stay in the pipeline counts."
+      },
+      {
+        "rule": "Disqualified deals still marked \u201copen\u201d",
+        "kind": "info",
+        "count": 2,
+        "reason": "The stage says Disqualified but the status was never updated. They are counted as Disqualified."
+      },
+      {
+        "rule": "Deals marked \u201cwon\u201d outside the Closed stage",
+        "kind": "info",
+        "count": 0,
+        "reason": "Counted in the stage they sit in; only the Closed stage counts as won."
+      }
+    ]
+  }
+}

@@ -55,17 +55,44 @@ jargon, logical flow: volume → pipeline → conversion → revenue.
       - `GHL_LOCATION_ID` — sandbox Location ID from the pinned message
 - [ ] Start a new session so the variables load, then say:
       *"Continue Project 1 from PROJECT1_BRIEF.md"*.
-- [ ] If the pinned message says which pipeline/tag identifies "our" agency, note it here.
+- [x] GHL auth is injected by the session proxy here, so no key was needed in this
+      environment. Location ID: `yLiKZKvk2CeI2ckIqd1L`.
+- [x] Agency identifier: contacts tagged **`dash-project`**, deals in the 8-stage
+      **"Sales Pipeline"**.
+- [ ] Add repo secrets `GHL_API_KEY` / `GHL_LOCATION_ID` so the daily GitHub Action can run.
+- [ ] Merge to `main`, then turn on GitHub Pages (Settings → Pages → Deploy from branch → `main`
+      / root). Live link: `https://sirineghader-dotcom.github.io/sirine-portfolio/marketing-dashboard.html`.
+
+## What the data looked like (explored 2026-10-09)
+
+- 369 contacts and 247 deals in the shared location; 5 pipelines (other students' pipelines
+  are "My Sales Pipeline", "Engineering Services – Sales", "SG sales pipeline",
+  "OD_Questia | New Patient / Lead").
+- 321 contacts tagged `dash-project`; 204 of them have a Sales Pipeline deal. The other 32
+  Sales Pipeline deals belong to `demo-data`/`sandbox` contacts (not this agency).
+- **Internal:** 15 contacts tagged `internal` (all "Website Form"). Removed.
+- **Duplicates:** 12 contacts re-entered with the same name and company and a `.2` email
+  (e.g. `name.123.2@`), usually under a different source; one is tagged `dq - duplicate`.
+  Removed; the first entry (which holds the deal) is kept.
+- **Deal values:** typical deal $7,250. 7 deals at $145,000 (2 of them won) and 9 at $0
+  (1 won). Won ones are kept as won deals but left out of revenue.
+- **Status vs stage:** 2 deals sit in Disqualified but are still "open"; counted by stage.
+- No missing sources, spelling variants or impossible dates in the current data. The checks
+  stay in the script for future refreshes.
+- All records were created 2026-09-01 → 09-04 (seeded), so there's no usable
+  month-by-month history. The dashboard shows totals per source, not trends.
+- Result: 294 leads and 204 deals across 9 sources. Every source has only 1–5 won deals, so
+  the advice is stated with that caveat.
 
 ## Plan
 
-1. **Explore the data.** Read `GHL_API_KEY` / `GHL_LOCATION_ID` from the environment and pull
+1. **✅ Explore the data.** Read `GHL_API_KEY` / `GHL_LOCATION_ID` from the environment and pull
    contacts, opportunities and pipelines (API base `https://services.leadconnectorhq.com`,
    header `Version: 2021-07-28`). Save raw pulls outside the repo. Report what's messy to
    Sirine before building the page.
-2. **Pick this agency's records.** Find the rule that separates them from other students'
+2. **✅ Pick this agency's records.** Find the rule that separates them from other students'
    records (pipeline name, tag, location, naming pattern) and document it.
-3. **Cleaning rules**, each with a count and a plain-English reason, to check for:
+3. **✅ Cleaning rules**, each with a count and a plain-English reason, to check for:
    - duplicate contacts (same email or phone, normalized)
    - test/internal leads (test names, internal or example domains, fake phones)
    - missing or unknown sources; inconsistent source spellings to merge
@@ -73,10 +100,10 @@ jargon, logical flow: volume → pipeline → conversion → revenue.
    - impossible dates (outside the 3-month window, in the future, closed before created)
    - opportunities without a contact, or in another pipeline
    - anything else found in the data
-4. **Data build script** (`scripts/build-data.*`): pull → clean → aggregate by source →
+4. **✅ Data build script** (`scripts/build_data.py`): pull → clean → aggregate by source →
    write `data/dashboard-data.json` (aggregates only, no personal data). The script asserts
    that stage counts sum to source totals and fails if not.
-5. **Dashboard page** (`marketing-dashboard.html`, static, Chart.js, matches the site's
+5. **✅ Dashboard page** (`marketing-dashboard.html`, static, Chart.js, matches the site's
    style), top to bottom:
    1. Plain-English headline: where to put next month's budget, and why
    2. Lead volume by source (bar)
