@@ -1,4 +1,4 @@
-# Refreshes data/dashboard-data.json from GoHighLevel every morning.
+# Refreshes data/dashboard-data.json from GoHighLevel everyday.
 # Needs repo secrets GHL_API_KEY and GHL_LOCATION_ID
 # (Settings → Secrets and variables → Actions). The key never reaches the browser:
 # only the cleaned, aggregated JSON is committed.
