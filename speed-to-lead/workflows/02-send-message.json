@@ -1,0 +1,411 @@
+{
+  "name": "STL 02 \u00b7 Send message (sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0a8b03dc-7bdd-53f1-874d-05943154ec53",
+      "name": "When called by another workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_object_agg(key, value) AS cfg FROM settings;",
+        "options": {}
+      },
+      "id": "4365c4e6-7fa6-5c10-8a5e-495171ba2e70",
+      "name": "Load settings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        220,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- One atomic statement: refuse if a human has taken over, refuse if this exact\n-- message (dedupe_key) was ever reserved before. Only then may we call GHL.\nWITH i AS (SELECT $1::jsonb AS p),\nlead AS (SELECT l.* FROM leads l, i WHERE l.id = (i.p->>'lead_id')::uuid),\nins AS (\n  INSERT INTO sent_messages (dedupe_key, lead_id, contact_id, channel, template_key)\n  SELECT p->>'dedupe_key', (p->>'lead_id')::uuid, p->>'contact_id', p->>'channel', p->>'template_key' FROM i\n  WHERE NOT EXISTS (SELECT 1 FROM lead WHERE automation_paused)\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING dedupe_key\n)\nSELECT EXISTS (SELECT 1 FROM ins) AS reserved,\n       COALESCE((SELECT automation_paused FROM lead), false) AS paused,\n       (SELECT p FROM i) AS input,\n       (SELECT jsonb_build_object('first_name', first_name, 'company', company, 'source', source) FROM lead) AS lead,\n       (SELECT jsonb_build_object('start_time', a.start_time) FROM appointments a, i\n         WHERE a.appointment_id = i.p->>'appointment_id') AS appointment;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($('When called by another workflow').item.json) ] }}"
+        }
+      },
+      "id": "cff1d4d1-365c-57cd-8dfe-6faab95103d6",
+      "name": "Reserve send slot",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        440,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "006fcdb1-d3b0-5cde-b4eb-875e345a4ca6",
+              "leftValue": "={{ $json.reserved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b0284a16-178d-5c32-bfd0-86602a214d19",
+      "name": "Reserved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: { ...$json.input, sent: false, reason: $json.paused ? 'automation_paused' : 'duplicate' } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "ef94c1a5-68a2-5abe-88b2-1028bc970758",
+      "name": "Not sent (duplicate or paused)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// All customer-facing copy lives here. {{ }} placeholders are filled per lead.\nconst cfg = $('Load settings').first().json.cfg;\nconst input = $json.input, lead = $json.lead || {};\nconst tz = cfg.TEAM_TIMEZONE || 'America/New_York';\nconst when = $json.appointment?.start_time\n  ? DateTime.fromISO(new Date($json.appointment.start_time).toISOString()).setZone(tz).toFormat(\"cccc, LLL d 'at' h:mm a ZZZZ\")\n  : '';\nconst name = lead.first_name || 'there';\nconst link = cfg.BOOKING_LINK, brand = cfg.EMAIL_FROM_NAME || 'Northwind Growth';\nconst T = {\n  intake_qualified_sms: `Hi ${name}, it's ${brand}. Thanks for reaching out! You look like a great fit. Grab a 30-min strategy call here: ${link} Reply STOP to opt out.`,\n  intake_qualified_email: [`${name}, let's find your next 30 pipeline calls`,\n    `<p>Hi ${name},</p><p>Thanks for telling us about ${lead.company || 'your company'}. Based on your answers, a 30-minute strategy call is the right next step.</p><p><a href=\"${link}\">Pick a time that suits you</a></p><p>On the call we review your current acquisition costs and show you where the cheapest booked calls are hiding.</p><p>Talk soon,<br>The ${brand} team</p>`],\n  intake_not_qualified_email: [`Thanks for reaching out, ${name}`,\n    `<p>Hi ${name},</p><p>Thank you for your interest in ${brand}. Right now we focus on B2B companies with a dedicated monthly growth budget, so we don't think we'd be the best use of your money today.</p><p>Our free guides on our blog are a good place to start, and you're always welcome to reach out again as things grow.</p><p>All the best,<br>The ${brand} team</p>`],\n  intake_not_qualified_sms: `Hi ${name}, thanks for contacting ${brand}. We focus on B2B teams with a set monthly growth budget, so we may not be the best fit today, but you're welcome back anytime. Reply STOP to opt out.`,\n  intake_review_sms: `Hi ${name}, thanks for reaching out to ${brand}! A strategist is reviewing your details and will text you shortly. Reply STOP to opt out.`,\n  intake_review_email: [`We got your details, ${name}`,\n    `<p>Hi ${name},</p><p>Thanks for reaching out. A strategist is reviewing your answers personally and will get back to you today.</p><p>The ${brand} team</p>`],\n  chase_1_sms: `Hi ${name}, just checking you saw the link for your strategy call with ${brand}: ${link}`,\n  chase_2_email: [`Still keen to talk growth, ${name}?`,\n    `<p>Hi ${name},</p><p>Spots for strategy calls this week are filling up. If you'd still like one, <a href=\"${link}\">choose a time here</a>. It takes 30 seconds.</p><p>The ${brand} team</p>`],\n  chase_3_sms: `Last nudge from ${brand}, ${name}: if now's not the right time, no worries. If it is, book here: ${link}`,\n  booking_confirmed_sms: `You're booked, ${name}! Your ${brand} strategy call is ${when}. We'll send a reminder before.`,\n  booking_confirmed_email: [`Confirmed: your strategy call, ${when}`,\n    `<p>Hi ${name},</p><p>Your strategy call is confirmed for <strong>${when}</strong>.</p><p>To get the most from it, have your last 3 months of ad spend and lead numbers handy.</p><p>Need a different time? <a href=\"${link}\">Reschedule here</a>.</p><p>The ${brand} team</p>`],\n  booking_rescheduled_sms: `Got it, ${name}. Your ${brand} call has moved to ${when}. Old reminders are cancelled.`,\n  booking_rescheduled_email: [`New time: ${when}`,\n    `<p>Hi ${name},</p><p>Your strategy call has moved to <strong>${when}</strong>. See you then!</p><p>The ${brand} team</p>`],\n  reminder_24h_email: [`Tomorrow: your strategy call with ${brand}`,\n    `<p>Hi ${name},</p><p>A quick reminder that your call is <strong>${when}</strong>.</p><p>Can't make it? <a href=\"${link}\">Pick a new time</a> so the slot can go to someone else.</p><p>The ${brand} team</p>`],\n  reminder_24h_sms: `Reminder: your ${brand} strategy call is ${when}. Need to move it? ${link}`,\n  reminder_2h_sms: `See you in 2 hours, ${name}! Your ${brand} call starts ${when}.`,\n  cancel_rebook_1_sms: `Hi ${name}, we saw your ${brand} call was cancelled. No problem! Want a new time? ${link}`,\n  cancel_rebook_2_email: [`Want to pick a new time, ${name}?`,\n    `<p>Hi ${name},</p><p>Your strategy call was cancelled. If you'd still like to talk, <a href=\"${link}\">grab a new slot here</a>.</p><p>The ${brand} team</p>`],\n  noshow_rebook_1_sms: `Hi ${name}, we missed you on the call today. Life happens! Grab a new time here: ${link}`,\n  noshow_rebook_2_email: [`Sorry we missed you, ${name}`,\n    `<p>Hi ${name},</p><p>We were sorry to miss you. Your spot is still open; <a href=\"${link}\">pick a new time</a> and we'll pick up where we left off.</p><p>The ${brand} team</p>`],\n  noshow_rebook_3_sms: `Hi ${name}, one last try from ${brand}: if growth is still a priority, book a new time here: ${link}`,\n};\nconst t = T[input.template_key];\nif (!t) throw new Error(`Unknown template_key ${input.template_key}`);\nconst isEmail = input.channel === 'Email';\nconst body = isEmail\n  ? { type: 'Email', contactId: input.contact_id, subject: t[0], html: t[1] }\n  : { type: 'SMS', contactId: input.contact_id, message: t };\nreturn { json: { input, body } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "e999b341-429f-5bc6-89e4-309a98bc205c",
+      "name": "Render template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "id": "8c9f8453-2fd4-5337-b688-00b9990ba8a3",
+      "name": "Send via GHL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "stl-ghl",
+          "name": "GHL Private Integration"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH s AS (\n  UPDATE sent_messages SET status = 'sent', sent_at = now(), ghl_message_id = $2\n  WHERE dedupe_key = $1 RETURNING lead_id\n)\nUPDATE leads SET first_reply_at = COALESCE(first_reply_at, now()), updated_at = now()\nWHERE id = (SELECT lead_id FROM s)\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('Render template').item.json.input.dedupe_key, $json.messageId || $json.emailMessageId || $json.id || null ] }}"
+        }
+      },
+      "id": "58ece64b-ee23-5989-af96-8d790605daab",
+      "name": "Mark sent + stamp first reply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1320,
+        100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: { ...$('Render template').item.json.input, sent: true } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "0935dc03-abc3-5b6b-a5a3-2dfbca6034d8",
+      "name": "Result: sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE sent_messages SET status = 'failed', error = $2 WHERE dedupe_key = $1 RETURNING dedupe_key;",
+        "options": {
+          "queryReplacement": "={{ [ $('Render template').item.json.input.dedupe_key, JSON.stringify($json.error || $json).slice(0, 2000) ] }}"
+        }
+      },
+      "id": "d4a5b1b8-4ed3-5ddd-90cf-38b44a736f3d",
+      "name": "Mark failed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1320,
+        320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: {\n  severity: 'critical',\n  workflow: $workflow.name,\n  node: $prevNode.name,\n  message: `GHL refused ${$('Render template').item.json.input.channel} \"${$('Render template').item.json.input.template_key}\" for contact ${$('Render template').item.json.input.contact_id}. Not retried automatically to avoid a double send.`,\n  alert_key: 'send_failed:' + $('Render template').item.json.input.dedupe_key,\n  execution_id: $execution.id,\n  context: $('Render template').item.json.input,\n} };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "ee15322f-b6f1-522f-a3d6-58d310103f47",
+      "name": "Alert: send failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_ALERT__",
+        "options": {}
+      },
+      "id": "1a87db28-dd71-5191-a230-3abf5003ac9b",
+      "name": "Send alert",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: { ...$('Render template').item.json.input, sent: false, reason: 'send_failed' } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "6f9afd32-5fd6-5e40-b459-28214a384985",
+      "name": "Result: failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "When called by another workflow": {
+      "main": [
+        [
+          {
+            "node": "Load settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load settings": {
+      "main": [
+        [
+          {
+            "node": "Reserve send slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reserve send slot": {
+      "main": [
+        [
+          {
+            "node": "Reserved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reserved?": {
+      "main": [
+        [
+          {
+            "node": "Render template",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not sent (duplicate or paused)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Render template": {
+      "main": [
+        [
+          {
+            "node": "Send via GHL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send via GHL": {
+      "main": [
+        [
+          {
+            "node": "Mark sent + stamp first reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark sent + stamp first reply": {
+      "main": [
+        [
+          {
+            "node": "Result: sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark failed": {
+      "main": [
+        [
+          {
+            "node": "Alert: send failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert: send failed": {
+      "main": [
+        [
+          {
+            "node": "Send alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send alert": {
+      "main": [
+        [
+          {
+            "node": "Result: failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "__WF_ERROR_HANDLER__"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}

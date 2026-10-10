@@ -1,0 +1,111 @@
+{
+  "name": "STL 09 \u00b7 Dashboard API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "stl/dashboard",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ef5577a6-7aa8-5643-9e8a-b472c078bfeb",
+      "name": "GET /stl/dashboard",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "f0bc301c-e277-59e5-95e4-902ceec54619"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_build_object(\n  'generated_at', now(),\n  'leads', COALESCE((SELECT jsonb_agg(jsonb_build_array(\n             source, opted_in_at, first_reply_at, qualification, score, booked_at, showed_at, no_show_at)\n             ORDER BY opted_in_at)\n           FROM leads WHERE opted_in_at > now() - interval '180 days'), '[]'::jsonb),\n  'spend', COALESCE((SELECT jsonb_agg(jsonb_build_array(date, source, line_item, amount_usd) ORDER BY date)\n           FROM ad_spend WHERE date > current_date - 180), '[]'::jsonb)\n) AS data;",
+        "options": {}
+      },
+      "id": "5a169c30-454f-50e7-845c-012e17e66e95",
+      "name": "Leads + spend (no PII)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        220,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.data) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "max-age=60"
+              }
+            ]
+          }
+        }
+      },
+      "id": "3e586074-d198-52bf-aeb1-10d20bb4e5ea",
+      "name": "Respond JSON",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        440,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "GET /stl/dashboard": {
+      "main": [
+        [
+          {
+            "node": "Leads + spend (no PII)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leads + spend (no PII)": {
+      "main": [
+        [
+          {
+            "node": "Respond JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "__WF_ERROR_HANDLER__"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}

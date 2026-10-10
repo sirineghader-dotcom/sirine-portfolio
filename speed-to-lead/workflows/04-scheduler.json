@@ -1,0 +1,210 @@
+{
+  "name": "STL 04 \u00b7 Scheduler (every minute)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "c6cdd00f-b2b7-51f2-a4c9-1e69ed194be2",
+      "name": "Every minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- SKIP LOCKED + status='sending' means two overlapping runs never pick the same row.\n-- Each row is re-validated against the latest state right before sending.\nWITH due AS (\n  SELECT id FROM scheduled_messages\n  WHERE status = 'pending' AND send_at <= now()\n  ORDER BY send_at LIMIT 50\n  FOR UPDATE SKIP LOCKED\n),\nclaimed AS (\n  UPDATE scheduled_messages s SET status = 'sending', locked_at = now()\n  FROM due WHERE s.id = due.id\n  RETURNING s.*\n)\nSELECT c.id AS schedule_id, c.lead_id, c.contact_id, c.appointment_id, c.sequence,\n       c.template_key, c.channel, c.dedupe_key,\n       CASE\n         WHEN l.automation_paused THEN 'automation paused (' || COALESCE(l.paused_reason, '?') || ')'\n         WHEN c.sequence = 'reminder' AND (a.version IS DISTINCT FROM c.appointment_version OR a.status <> 'booked')\n              THEN 'appointment changed since this reminder was queued'\n         WHEN c.sequence = 'reminder' AND a.start_time < now() THEN 'call already started'\n         WHEN c.sequence = 'chase' AND l.booked_at IS NOT NULL THEN 'already booked'\n         WHEN c.sequence = 'rebook' AND EXISTS (\n              SELECT 1 FROM appointments a2 WHERE a2.lead_id = c.lead_id AND a2.status = 'booked' AND a2.start_time > now())\n              THEN 'already re-booked'\n       END AS skip_reason\nFROM claimed c\nJOIN leads l ON l.id = c.lead_id\nLEFT JOIN appointments a ON a.appointment_id = c.appointment_id;",
+        "options": {}
+      },
+      "id": "6760ac18-4e95-5136-9acc-e293d388629c",
+      "name": "Claim due messages",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        220,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "1350fbfd-1c78-5e74-9960-9456ff53ddeb",
+              "leftValue": "={{ !$json.skip_reason }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5ebbc201-0a98-5c2a-b437-cd463e1ca2b1",
+      "name": "Still valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE scheduled_messages SET status = 'skipped', cancel_reason = $2, done_at = now() WHERE id = $1 RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $json.schedule_id, $json.skip_reason ] }}"
+        }
+      },
+      "id": "014280e1-a7fc-5016-98d1-f5ddcadc551d",
+      "name": "Mark skipped",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        660,
+        400
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_SEND_MESSAGE__",
+        "options": {}
+      },
+      "id": "95c4ec8b-3ba5-59f0-bf74-f56607e4e4e0",
+      "name": "Send message",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        660,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE scheduled_messages SET\n  status = CASE WHEN $2::text = 'true' THEN 'sent' WHEN $3::text IN ('duplicate', 'automation_paused') THEN 'skipped' ELSE 'failed' END,\n  cancel_reason = NULLIF($3::text, ''), done_at = now()\nWHERE dedupe_key = $1 RETURNING id, status;",
+        "options": {
+          "queryReplacement": "={{ [ $json.dedupe_key, String($json.sent === true), $json.reason || '' ] }}"
+        }
+      },
+      "id": "a29d0416-fd2c-5bfa-a584-e32a951c7252",
+      "name": "Mark result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        880,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every minute": {
+      "main": [
+        [
+          {
+            "node": "Claim due messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim due messages": {
+      "main": [
+        [
+          {
+            "node": "Still valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Still valid?": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message": {
+      "main": [
+        [
+          {
+            "node": "Mark result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "__WF_ERROR_HANDLER__"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}

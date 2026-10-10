@@ -1,0 +1,623 @@
+date,source,line_item,amount_usd
+2026-07-01,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-01,meta,Meta Ads: lead form campaigns,179.36
+2026-07-01,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-01,website,Google Ads: B2B search,64.53
+2026-07-01,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-01,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-02,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-02,meta,Meta Ads: lead form campaigns,154.1
+2026-07-02,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-02,website,Google Ads: B2B search,70.7
+2026-07-02,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-02,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-03,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-03,meta,Meta Ads: lead form campaigns,166.56
+2026-07-03,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-03,website,Google Ads: B2B search,58.41
+2026-07-03,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-03,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-04,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-04,meta,Meta Ads: lead form campaigns,133.18
+2026-07-04,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-04,website,Google Ads: B2B search,35.23
+2026-07-04,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-04,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-05,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-05,meta,Meta Ads: lead form campaigns,142.17
+2026-07-05,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-05,website,Google Ads: B2B search,42.78
+2026-07-05,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-05,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-06,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-06,meta,Meta Ads: lead form campaigns,188.58
+2026-07-06,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-06,referral,Referral bonus ($200 per showed call),200.0
+2026-07-06,website,Google Ads: B2B search,61.49
+2026-07-06,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-06,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-07,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-07,meta,Meta Ads: lead form campaigns,154.93
+2026-07-07,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-07,website,Google Ads: B2B search,59.25
+2026-07-07,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-07,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-08,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-08,meta,Meta Ads: lead form campaigns,162.78
+2026-07-08,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-08,website,Google Ads: B2B search,74.48
+2026-07-08,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-08,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-09,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-09,meta,Meta Ads: lead form campaigns,161.32
+2026-07-09,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-09,website,Google Ads: B2B search,67.14
+2026-07-09,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-09,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-10,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-10,meta,Meta Ads: lead form campaigns,174.7
+2026-07-10,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-10,website,Google Ads: B2B search,64.86
+2026-07-10,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-10,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-11,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-11,meta,Meta Ads: lead form campaigns,162.14
+2026-07-11,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-11,website,Google Ads: B2B search,48.05
+2026-07-11,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-11,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-12,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-12,meta,Meta Ads: lead form campaigns,154.95
+2026-07-12,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-12,website,Google Ads: B2B search,45.38
+2026-07-12,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-12,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-13,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-13,meta,Meta Ads: lead form campaigns,190.23
+2026-07-13,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-13,website,Google Ads: B2B search,62.59
+2026-07-13,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-13,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-14,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-14,meta,Meta Ads: lead form campaigns,190.83
+2026-07-14,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-14,website,Google Ads: B2B search,81.08
+2026-07-14,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-14,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-15,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-15,meta,Meta Ads: lead form campaigns,168.0
+2026-07-15,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-15,website,Google Ads: B2B search,71.15
+2026-07-15,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-15,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-16,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-16,meta,Meta Ads: lead form campaigns,165.26
+2026-07-16,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-16,website,Google Ads: B2B search,76.19
+2026-07-16,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-16,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-17,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-17,meta,Meta Ads: lead form campaigns,192.88
+2026-07-17,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-17,referral,Referral bonus ($200 per showed call),400.0
+2026-07-17,website,Google Ads: B2B search,63.03
+2026-07-17,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-17,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-18,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-18,meta,Meta Ads: lead form campaigns,162.63
+2026-07-18,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-18,website,Google Ads: B2B search,39.98
+2026-07-18,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-18,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-19,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-19,meta,Meta Ads: lead form campaigns,163.34
+2026-07-19,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-19,website,Google Ads: B2B search,49.14
+2026-07-19,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-19,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-20,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-20,meta,Meta Ads: lead form campaigns,184.59
+2026-07-20,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-20,referral,Referral bonus ($200 per showed call),400.0
+2026-07-20,website,Google Ads: B2B search,63.51
+2026-07-20,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-20,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-21,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-21,meta,Meta Ads: lead form campaigns,170.96
+2026-07-21,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-21,website,Google Ads: B2B search,68.86
+2026-07-21,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-21,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-22,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-22,meta,Meta Ads: lead form campaigns,187.17
+2026-07-22,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-22,website,Google Ads: B2B search,76.63
+2026-07-22,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-22,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-23,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-23,meta,Meta Ads: lead form campaigns,170.74
+2026-07-23,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-23,referral,Referral bonus ($200 per showed call),200.0
+2026-07-23,website,Google Ads: B2B search,68.77
+2026-07-23,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-23,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-24,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-24,meta,Meta Ads: lead form campaigns,179.29
+2026-07-24,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-24,website,Google Ads: B2B search,71.7
+2026-07-24,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-24,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-25,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-25,meta,Meta Ads: lead form campaigns,128.1
+2026-07-25,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-25,website,Google Ads: B2B search,44.15
+2026-07-25,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-25,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-26,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-26,meta,Meta Ads: lead form campaigns,137.52
+2026-07-26,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-26,website,Google Ads: B2B search,35.96
+2026-07-26,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-26,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-27,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-27,meta,Meta Ads: lead form campaigns,192.83
+2026-07-27,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-27,referral,Referral bonus ($200 per showed call),200.0
+2026-07-27,website,Google Ads: B2B search,78.91
+2026-07-27,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-27,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-28,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-28,meta,Meta Ads: lead form campaigns,189.52
+2026-07-28,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-28,referral,Referral bonus ($200 per showed call),200.0
+2026-07-28,website,Google Ads: B2B search,65.53
+2026-07-28,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-28,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-29,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-29,meta,Meta Ads: lead form campaigns,176.59
+2026-07-29,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-29,referral,Referral bonus ($200 per showed call),200.0
+2026-07-29,website,Google Ads: B2B search,60.6
+2026-07-29,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-29,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-30,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-30,meta,Meta Ads: lead form campaigns,193.03
+2026-07-30,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-30,website,Google Ads: B2B search,73.61
+2026-07-30,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-30,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-07-31,meta,"Creative production (monthly, spread daily)",29.03
+2026-07-31,meta,Meta Ads: lead form campaigns,182.21
+2026-07-31,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-07-31,website,Google Ads: B2B search,69.35
+2026-07-31,website,"Landing page tools (monthly, spread daily)",4.81
+2026-07-31,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-01,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-01,meta,Meta Ads: lead form campaigns,150.83
+2026-08-01,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-01,website,Google Ads: B2B search,40.1
+2026-08-01,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-01,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-02,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-02,meta,Meta Ads: lead form campaigns,159.98
+2026-08-02,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-02,website,Google Ads: B2B search,42.03
+2026-08-02,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-02,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-03,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-03,meta,Meta Ads: lead form campaigns,189.3
+2026-08-03,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-03,website,Google Ads: B2B search,65.95
+2026-08-03,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-03,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-04,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-04,meta,Meta Ads: lead form campaigns,155.11
+2026-08-04,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-04,website,Google Ads: B2B search,76.95
+2026-08-04,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-04,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-05,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-05,meta,Meta Ads: lead form campaigns,194.78
+2026-08-05,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-05,website,Google Ads: B2B search,79.35
+2026-08-05,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-05,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-06,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-06,meta,Meta Ads: lead form campaigns,169.88
+2026-08-06,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-06,referral,Referral bonus ($200 per showed call),200.0
+2026-08-06,website,Google Ads: B2B search,63.59
+2026-08-06,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-06,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-07,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-07,meta,Meta Ads: lead form campaigns,161.67
+2026-08-07,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-07,website,Google Ads: B2B search,64.65
+2026-08-07,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-07,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-08,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-08,meta,Meta Ads: lead form campaigns,137.99
+2026-08-08,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-08,website,Google Ads: B2B search,35.71
+2026-08-08,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-08,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-09,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-09,meta,Meta Ads: lead form campaigns,138.92
+2026-08-09,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-09,website,Google Ads: B2B search,42.55
+2026-08-09,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-09,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-10,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-10,meta,Meta Ads: lead form campaigns,174.17
+2026-08-10,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-10,website,Google Ads: B2B search,66.09
+2026-08-10,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-10,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-11,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-11,meta,Meta Ads: lead form campaigns,170.73
+2026-08-11,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-11,website,Google Ads: B2B search,59.78
+2026-08-11,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-11,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-12,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-12,meta,Meta Ads: lead form campaigns,158.61
+2026-08-12,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-12,website,Google Ads: B2B search,59.36
+2026-08-12,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-12,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-13,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-13,meta,Meta Ads: lead form campaigns,163.04
+2026-08-13,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-13,referral,Referral bonus ($200 per showed call),200.0
+2026-08-13,website,Google Ads: B2B search,75.33
+2026-08-13,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-13,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-14,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-14,meta,Meta Ads: lead form campaigns,158.45
+2026-08-14,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-14,website,Google Ads: B2B search,77.24
+2026-08-14,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-14,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-15,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-15,meta,Meta Ads: lead form campaigns,137.61
+2026-08-15,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-15,website,Google Ads: B2B search,47.1
+2026-08-15,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-15,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-16,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-16,meta,Meta Ads: lead form campaigns,135.09
+2026-08-16,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-16,website,Google Ads: B2B search,47.85
+2026-08-16,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-16,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-17,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-17,meta,Meta Ads: lead form campaigns,151.06
+2026-08-17,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-17,website,Google Ads: B2B search,77.2
+2026-08-17,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-17,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-18,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-18,meta,Meta Ads: lead form campaigns,180.58
+2026-08-18,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-18,website,Google Ads: B2B search,79.35
+2026-08-18,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-18,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-19,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-19,meta,Meta Ads: lead form campaigns,192.4
+2026-08-19,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-19,website,Google Ads: B2B search,80.63
+2026-08-19,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-19,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-20,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-20,meta,Meta Ads: lead form campaigns,186.44
+2026-08-20,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-20,website,Google Ads: B2B search,65.29
+2026-08-20,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-20,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-21,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-21,meta,Meta Ads: lead form campaigns,191.5
+2026-08-21,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-21,website,Google Ads: B2B search,58.57
+2026-08-21,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-21,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-22,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-22,meta,Meta Ads: lead form campaigns,144.62
+2026-08-22,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-22,website,Google Ads: B2B search,36.86
+2026-08-22,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-22,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-23,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-23,meta,Meta Ads: lead form campaigns,155.04
+2026-08-23,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-23,website,Google Ads: B2B search,37.57
+2026-08-23,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-23,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-24,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-24,meta,Meta Ads: lead form campaigns,184.53
+2026-08-24,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-24,website,Google Ads: B2B search,77.13
+2026-08-24,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-24,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-25,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-25,meta,Meta Ads: lead form campaigns,156.66
+2026-08-25,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-25,website,Google Ads: B2B search,63.69
+2026-08-25,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-25,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-26,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-26,meta,Meta Ads: lead form campaigns,151.55
+2026-08-26,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-26,website,Google Ads: B2B search,63.08
+2026-08-26,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-26,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-27,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-27,meta,Meta Ads: lead form campaigns,160.66
+2026-08-27,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-27,website,Google Ads: B2B search,66.57
+2026-08-27,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-27,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-28,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-28,meta,Meta Ads: lead form campaigns,173.94
+2026-08-28,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-28,website,Google Ads: B2B search,58.91
+2026-08-28,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-28,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-29,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-29,meta,Meta Ads: lead form campaigns,165.31
+2026-08-29,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-29,website,Google Ads: B2B search,35.35
+2026-08-29,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-29,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-30,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-30,meta,Meta Ads: lead form campaigns,148.72
+2026-08-30,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-30,website,Google Ads: B2B search,38.69
+2026-08-30,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-30,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-08-31,meta,"Creative production (monthly, spread daily)",29.03
+2026-08-31,meta,Meta Ads: lead form campaigns,192.99
+2026-08-31,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-08-31,website,Google Ads: B2B search,71.7
+2026-08-31,website,"Landing page tools (monthly, spread daily)",4.81
+2026-08-31,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-09-01,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-01,meta,Meta Ads: lead form campaigns,168.45
+2026-09-01,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-01,website,Google Ads: B2B search,64.91
+2026-09-01,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-01,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-02,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-02,meta,Meta Ads: lead form campaigns,161.2
+2026-09-02,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-02,referral,Referral bonus ($200 per showed call),200.0
+2026-09-02,website,Google Ads: B2B search,71.42
+2026-09-02,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-02,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-03,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-03,meta,Meta Ads: lead form campaigns,186.93
+2026-09-03,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-03,website,Google Ads: B2B search,75.93
+2026-09-03,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-03,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-04,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-04,meta,Meta Ads: lead form campaigns,162.68
+2026-09-04,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-04,website,Google Ads: B2B search,68.96
+2026-09-04,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-04,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-05,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-05,meta,Meta Ads: lead form campaigns,157.74
+2026-09-05,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-05,website,Google Ads: B2B search,39.01
+2026-09-05,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-05,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-06,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-06,meta,Meta Ads: lead form campaigns,138.13
+2026-09-06,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-06,website,Google Ads: B2B search,49.2
+2026-09-06,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-06,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-07,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-07,meta,Meta Ads: lead form campaigns,185.55
+2026-09-07,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-07,referral,Referral bonus ($200 per showed call),200.0
+2026-09-07,website,Google Ads: B2B search,76.21
+2026-09-07,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-07,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-08,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-08,meta,Meta Ads: lead form campaigns,165.6
+2026-09-08,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-08,website,Google Ads: B2B search,68.28
+2026-09-08,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-08,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-09,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-09,meta,Meta Ads: lead form campaigns,179.7
+2026-09-09,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-09,referral,Referral bonus ($200 per showed call),200.0
+2026-09-09,website,Google Ads: B2B search,72.54
+2026-09-09,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-09,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-10,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-10,meta,Meta Ads: lead form campaigns,189.95
+2026-09-10,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-10,website,Google Ads: B2B search,81.66
+2026-09-10,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-10,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-11,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-11,meta,Meta Ads: lead form campaigns,203.64
+2026-09-11,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-11,website,Google Ads: B2B search,58.58
+2026-09-11,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-11,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-12,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-12,meta,Meta Ads: lead form campaigns,163.03
+2026-09-12,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-12,website,Google Ads: B2B search,47.56
+2026-09-12,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-12,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-13,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-13,meta,Meta Ads: lead form campaigns,148.56
+2026-09-13,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-13,website,Google Ads: B2B search,43.24
+2026-09-13,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-13,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-14,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-14,meta,Meta Ads: lead form campaigns,181.17
+2026-09-14,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-14,referral,Referral bonus ($200 per showed call),1000.0
+2026-09-14,website,Google Ads: B2B search,78.28
+2026-09-14,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-14,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-15,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-15,meta,Meta Ads: lead form campaigns,165.95
+2026-09-15,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-15,website,Google Ads: B2B search,81.91
+2026-09-15,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-15,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-16,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-16,meta,Meta Ads: lead form campaigns,188.94
+2026-09-16,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-16,website,Google Ads: B2B search,81.57
+2026-09-16,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-16,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-17,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-17,meta,Meta Ads: lead form campaigns,192.78
+2026-09-17,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-17,website,Google Ads: B2B search,63.5
+2026-09-17,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-17,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-18,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-18,meta,Meta Ads: lead form campaigns,202.0
+2026-09-18,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-18,referral,Referral bonus ($200 per showed call),200.0
+2026-09-18,website,Google Ads: B2B search,71.53
+2026-09-18,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-18,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-19,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-19,meta,Meta Ads: lead form campaigns,139.33
+2026-09-19,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-19,website,Google Ads: B2B search,39.24
+2026-09-19,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-19,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-20,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-20,meta,Meta Ads: lead form campaigns,151.64
+2026-09-20,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-20,website,Google Ads: B2B search,35.36
+2026-09-20,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-20,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-21,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-21,meta,Meta Ads: lead form campaigns,204.13
+2026-09-21,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-21,referral,Referral bonus ($200 per showed call),400.0
+2026-09-21,website,Google Ads: B2B search,74.78
+2026-09-21,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-21,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-22,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-22,meta,Meta Ads: lead form campaigns,187.49
+2026-09-22,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-22,website,Google Ads: B2B search,76.1
+2026-09-22,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-22,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-23,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-23,meta,Meta Ads: lead form campaigns,172.26
+2026-09-23,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-23,referral,Referral bonus ($200 per showed call),200.0
+2026-09-23,website,Google Ads: B2B search,72.33
+2026-09-23,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-23,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-24,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-24,meta,Meta Ads: lead form campaigns,178.32
+2026-09-24,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-24,website,Google Ads: B2B search,71.55
+2026-09-24,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-24,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-25,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-25,meta,Meta Ads: lead form campaigns,201.91
+2026-09-25,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-25,website,Google Ads: B2B search,62.04
+2026-09-25,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-25,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-26,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-26,meta,Meta Ads: lead form campaigns,166.76
+2026-09-26,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-26,website,Google Ads: B2B search,37.28
+2026-09-26,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-26,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-27,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-27,meta,Meta Ads: lead form campaigns,160.22
+2026-09-27,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-27,website,Google Ads: B2B search,36.07
+2026-09-27,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-27,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-28,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-28,meta,Meta Ads: lead form campaigns,203.45
+2026-09-28,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-28,website,Google Ads: B2B search,81.84
+2026-09-28,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-28,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-29,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-29,meta,Meta Ads: lead form campaigns,170.21
+2026-09-29,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-29,website,Google Ads: B2B search,62.7
+2026-09-29,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-29,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-09-30,meta,"Creative production (monthly, spread daily)",30.0
+2026-09-30,meta,Meta Ads: lead form campaigns,177.38
+2026-09-30,referral,"Partner program: CRM seat & events (monthly, spread daily)",15.0
+2026-09-30,website,Google Ads: B2B search,79.52
+2026-09-30,website,"Landing page tools (monthly, spread daily)",4.97
+2026-09-30,website,"SEO & content retainer (monthly, spread daily)",60.0
+2026-10-01,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-01,meta,Meta Ads: lead form campaigns,200.99
+2026-10-01,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-01,website,Google Ads: B2B search,76.86
+2026-10-01,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-01,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-10-02,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-02,meta,Meta Ads: lead form campaigns,176.85
+2026-10-02,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-02,website,Google Ads: B2B search,70.41
+2026-10-02,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-02,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-10-03,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-03,meta,Meta Ads: lead form campaigns,164.09
+2026-10-03,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-03,website,Google Ads: B2B search,41.44
+2026-10-03,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-03,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-10-04,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-04,meta,Meta Ads: lead form campaigns,157.28
+2026-10-04,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-04,website,Google Ads: B2B search,40.98
+2026-10-04,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-04,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-10-05,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-05,meta,Meta Ads: lead form campaigns,195.98
+2026-10-05,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-05,website,Google Ads: B2B search,78.97
+2026-10-05,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-05,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-10-06,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-06,meta,Meta Ads: lead form campaigns,189.07
+2026-10-06,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-06,website,Google Ads: B2B search,66.94
+2026-10-06,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-06,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-10-07,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-07,meta,Meta Ads: lead form campaigns,167.49
+2026-10-07,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-07,website,Google Ads: B2B search,70.45
+2026-10-07,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-07,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-10-08,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-08,meta,Meta Ads: lead form campaigns,202.52
+2026-10-08,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-08,website,Google Ads: B2B search,64.24
+2026-10-08,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-08,website,"SEO & content retainer (monthly, spread daily)",58.06
+2026-10-09,meta,"Creative production (monthly, spread daily)",29.03
+2026-10-09,meta,Meta Ads: lead form campaigns,183.49
+2026-10-09,referral,"Partner program: CRM seat & events (monthly, spread daily)",14.52
+2026-10-09,website,Google Ads: B2B search,81.05
+2026-10-09,website,"Landing page tools (monthly, spread daily)",4.81
+2026-10-09,website,"SEO & content retainer (monthly, spread daily)",58.06

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Lead Source Scorecard</title>
+<meta name="description" content="Which lead source brings the cheapest booked calls: Meta ads, website or referrals, never blended.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Layout: verdict sentence, then one card per source ranked by cost per booked call,
+     then the evidence (funnel, costs, speed, trend, spend sheet). Sources keep their colour everywhere. */
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --ink: #14171c;
+    --ink-2: #4b5260;
+    --muted: #7a8190;
+    --line: #e3e6eb;
+    --track: #eef0f3;
+    --focus: #2a78d6;
+    --meta: #2a78d6;      /* categorical slot 1 */
+    --website: #eb6834;   /* slot 2 */
+    --referral: #1baf7a;  /* slot 3 */
+    --good: #0b7a3b;
+    --good-bg: #e3f4ea;
+    --warn: #9a5b00;
+    --warn-bg: #fdf0d9;
+    --font-display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+    --font-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111316; --surface: #1b1e23; --ink: #f1f2f4; --ink-2: #c2c7d0; --muted: #8f96a3;
+      --line: #2c3038; --track: #262a31; --focus: #6da7ec;
+      --meta: #3987e5; --website: #d95926; --referral: #199e70;
+      --good: #5fd08f; --good-bg: #133222; --warn: #f0b75a; --warn-bg: #3a2a10;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111316; --surface: #1b1e23; --ink: #f1f2f4; --ink-2: #c2c7d0; --muted: #8f96a3;
+    --line: #2c3038; --track: #262a31; --focus: #6da7ec;
+    --meta: #3987e5; --website: #d95926; --referral: #199e70;
+    --good: #5fd08f; --good-bg: #133222; --warn: #f0b75a; --warn-bg: #3a2a10;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 var(--font-body); font-variant-numeric: tabular-nums;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 16px 56px; display: grid; gap: 28px; }
+  h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  h1 { font-size: 1.55rem; }
+  h2 { font-size: 1.15rem; }
+  p { margin: 0; }
+  .muted { color: var(--muted); }
+  .label { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* ---- top bar */
+  .top { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; justify-content: space-between; }
+  .top .who { display: grid; gap: 2px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg button { border: 0; background: none; padding: 6px 14px; border-radius: 999px; cursor: pointer; color: var(--ink-2); font-weight: 500; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+  .pill.demo { background: var(--warn-bg); color: var(--warn); }
+  .pill.live { background: var(--good-bg); color: var(--good); }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  /* ---- verdict */
+  .verdict { display: grid; gap: 8px; max-width: 62ch; }
+  .verdict .big { font-family: var(--font-display); font-size: clamp(1.45rem, 3.4vw, 2.1rem); line-height: 1.2; font-weight: 700; text-wrap: balance; }
+  .verdict .why { color: var(--ink-2); font-size: 1.02rem; }
+  .src { font-weight: 700; white-space: nowrap; }
+  .src::before { content: ""; display: inline-block; width: 0.62em; height: 0.62em; border-radius: 3px; margin-right: 0.3em; background: var(--c); vertical-align: 0.05em; }
+
+  /* ---- source cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 14px; display: grid; gap: 12px; border-top: 4px solid var(--c); min-width: 0; }
+  .card .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card .name { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
+  .rank { font-size: 0.75rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: var(--track); color: var(--ink-2); white-space: nowrap; }
+  .rank.best { background: var(--good-bg); color: var(--good); }
+  .hero-num { display: grid; gap: 0; }
+  .hero-num .v { font-family: var(--font-display); font-size: 2.5rem; font-weight: 700; line-height: 1.05; }
+  .rows { display: grid; gap: 0; margin: 0; }
+  .rows div { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+  .rows dt { color: var(--ink-2); }
+  .rows dd { margin: 0; font-weight: 600; text-align: right; }
+  .flag { color: var(--warn); }
+
+  /* ---- panels */
+  .section { display: grid; gap: 12px; }
+  .section > header { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; justify-content: space-between; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  .panel h3 { font-size: 0.98rem; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 8px; }
+
+  .bars { display: grid; gap: 9px; }
+  .bar-row { display: grid; grid-template-columns: 78px 1fr auto; gap: 10px; align-items: center; cursor: default; }
+  .bar-row .k { color: var(--ink-2); font-size: 0.88rem; }
+  .bar-row .t { height: 14px; background: var(--track); border-radius: 0 4px 4px 0; overflow: hidden; }
+  .bar-row .f { height: 100%; background: var(--c); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .bar-row .n { font-weight: 600; font-size: 0.9rem; text-align: right; min-width: 92px; }
+  .bar-row .n small { color: var(--muted); font-weight: 500; }
+  .bar-row:hover .f { filter: brightness(1.08); }
+  .tag-low { font-size: 0.7rem; font-weight: 700; color: var(--good); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart text { fill: var(--muted); font: 12px var(--font-body); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.88rem; color: var(--ink-2); }
+
+  .tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); padding: 8px 10px; border-radius: 8px; font-size: 0.82rem; line-height: 1.4; max-width: 260px; z-index: 10; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+  .tip b { font-weight: 600; }
+
+  /* ---- tables */
+  details { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  summary { cursor: pointer; padding: 14px 18px; font-weight: 600; }
+  .tbl { overflow-x: auto; padding: 0 18px 16px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+  th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child, th.l, td.l { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  tr.sub td { color: var(--ink-2); }
+  tr.tot td { font-weight: 700; }
+
+  .notes { color: var(--ink-2); font-size: 0.88rem; display: grid; gap: 6px; max-width: 75ch; }
+  .notes ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+  @media (max-width: 520px) {
+    .bar-row { grid-template-columns: 64px 1fr auto; }
+    .bar-row .n { min-width: 78px; }
+    .hero-num .v { font-size: 2.1rem; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bar-row .f { transition: width .35s ease; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="who">
+      <span class="label">Northwind Growth · Lead source scorecard</span>
+      <h1 id="range-title">Which source brings the cheapest booked calls?</h1>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Date range">
+        <button id="r30" data-days="30" aria-pressed="false">Last 30 days</button>
+        <button id="r90" data-days="90" aria-pressed="false">Last 90 days</button>
+        <button id="rall" data-days="0" aria-pressed="true">All time</button>
+      </div>
+      <span id="data-pill" class="pill demo">Demo data</span>
+    </div>
+  </div>
+
+  <section class="verdict" aria-live="polite">
+    <p class="big" id="verdict"></p>
+    <p class="why" id="why"></p>
+  </section>
+
+  <section class="cards" id="cards" aria-label="One card per source"></section>
+
+  <section class="section">
+    <header><h2>Leads → Qualified → Booked → Showed</h2><span class="muted">Each source on its own scale, so you can compare the drop-off</span></header>
+    <div class="grid3" id="funnels"></div>
+  </section>
+
+  <section class="section">
+    <header><h2>What each result costs</h2><span class="muted">Spend in the period ÷ results from leads who opted in during the period</span></header>
+    <div class="grid4" id="costs"></div>
+  </section>
+
+  <section class="section">
+    <header><h2>Cost per booked call, week by week</h2><span class="muted">Rolling 4 weeks, by booking date, up to the last complete week</span></header>
+    <div class="panel">
+      <div class="legend" id="trend-legend"></div>
+      <div class="chart" id="trend"></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <header><h2>Minutes from opt-in to first reply</h2><span class="muted">The promise is under 5 minutes, every source, day and night</span></header>
+    <div class="grid3" id="speed"></div>
+  </section>
+
+  <details id="numbers">
+    <summary>All numbers as a table</summary>
+    <div class="tbl"><table id="tbl-main"></table></div>
+  </details>
+  <details id="spend">
+    <summary>Ad spend sheet, by month and line item</summary>
+    <div class="tbl"><table id="tbl-spend"></table></div>
+  </details>
+
+  <footer class="notes">
+    <p><strong>How to read this.</strong> Sources are never added together. Every number belongs to one source.</p>
+    <ul>
+      <li>Leads, qualified, booked and showed count leads by the day they opted in. Spend is everything paid for that source in the same days, including retainers and referral bonuses.</li>
+      <li>No-show rate = no-shows ÷ calls that have already happened. Calls still in the future are left out.</li>
+      <li>Minutes to first reply is measured from the opt-in to the first message GoHighLevel accepted.</li>
+      <li id="source-note"></li>
+    </ul>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="data.js"></script>
+<script>
+// Point this at the n8n "STL 09 · Dashboard API" webhook to show live numbers.
+// It can also be passed as ?api=https://... in the URL.
+const LIVE_API_URL = '';
+
+const SOURCES = [
+  { key: 'meta', name: 'Meta ads', c: 'var(--meta)', bring: 'bring', have: 'have', their: 'their' },
+  { key: 'website', name: 'Website', c: 'var(--website)', bring: 'brings', have: 'has', their: 'its' },
+  { key: 'referral', name: 'Referrals', c: 'var(--referral)', bring: 'bring', have: 'have', their: 'their' },
+];
+const $ = id => document.getElementById(id);
+const money = v => (v == null || !isFinite(v)) ? '—' : '$' + Math.round(v).toLocaleString('en-US');
+const pct = v => (v == null || !isFinite(v)) ? '—' : Math.round(v * 100) + '%';
+const mins = v => v == null ? '—' : (v < 10 ? v.toFixed(1) : Math.round(v)) + ' min';
+const DAY = 864e5;
+let DATA = null, RANGE = 0;
+
+function srcLabel(s) { return `<span class="src" style="--c:${s.c}">${s.name}</span>`; }
+
+function window_(days) {
+  const end = new Date(DATA.generated_at).getTime();
+  const first = Math.min(...DATA.leads.map(l => +new Date(l[1])));
+  const start = days ? end - days * DAY : first;
+  return { start, end };
+}
+
+function compute(days) {
+  const { start, end } = window_(days);
+  const startDay = new Date(start).toISOString().slice(0, 10), endDay = new Date(end).toISOString().slice(0, 10);
+  const out = {};
+  for (const s of SOURCES) {
+    const L = DATA.leads.filter(l => l[0] === s.key && +new Date(l[1]) >= start && +new Date(l[1]) <= end);
+    const spend = DATA.spend.filter(r => r[1] === s.key && r[0] >= startDay && r[0] <= endDay).reduce((a, r) => a + +r[3], 0);
+    const replies = L.filter(l => l[2]).map(l => (new Date(l[2]) - new Date(l[1])) / 6e4).sort((a, b) => a - b);
+    const q = L.filter(l => l[3] === 'qualified').length;
+    const booked = L.filter(l => l[5]).length, showed = L.filter(l => l[6]).length, noshow = L.filter(l => l[7]).length;
+    const at = p => replies.length ? replies[Math.min(replies.length - 1, Math.floor(p * replies.length))] : null;
+    out[s.key] = {
+      ...s, leads: L.length, qualified: q, booked, showed, noshow, spend,
+      upcoming: booked - showed - noshow,
+      cpl: spend / L.length, cpb: spend / booked, cps: spend / showed,
+      noShowRate: (showed + noshow) ? noshow / (showed + noshow) : null,
+      medReply: at(0.5), p90Reply: at(0.9), within5: replies.length ? replies.filter(m => m <= 5).length / replies.length : null,
+      unreplied: L.length - replies.length,
+    };
+  }
+  return out;
+}
+
+function render() {
+  const M = compute(RANGE);
+  const list = SOURCES.map(s => M[s.key]);
+  const ranked = [...list].filter(m => isFinite(m.cpb)).sort((a, b) => a.cpb - b.cpb);
+  const best = ranked[0];
+  const others = ranked.slice(1).map(m => `${srcLabel(m)} ${money(m.cpb)}`).join(', ');
+  $('verdict').innerHTML = best
+    ? `${srcLabel(best)} ${best.bring} the cheapest booked calls: ${money(best.cpb)} each. ${others ? 'Then ' + others + '.' : ''}`
+    : 'No booked calls in this period yet.';
+  const cheapLead = [...list].sort((a, b) => a.cpl - b.cpl)[0];
+  const worstShow = [...list].filter(m => m.noShowRate != null).sort((a, b) => b.noShowRate - a.noShowRate)[0];
+  $('why').innerHTML = cheapLead && worstShow && cheapLead.key === worstShow.key && best && best.key !== cheapLead.key
+    ? `${srcLabel(cheapLead)} ${cheapLead.have} the cheapest leads (${money(cheapLead.cpl)}), but fewer qualify and ${pct(worstShow.noShowRate)} of ${cheapLead.their} calls no-show, so each call that actually happens costs ${money(cheapLead.cps)}.`
+    : `Cheapest lead: ${srcLabel(cheapLead)} at ${money(cheapLead.cpl)}. Cheapest show: ${srcLabel([...list].sort((a, b) => a.cps - b.cps)[0])}.`;
+
+  // cards, cheapest booked call first
+  const order = [...ranked, ...list.filter(m => !ranked.includes(m))];
+  $('cards').innerHTML = order.map((m, i) => `
+    <article class="card" style="--c:${m.c}">
+      <div class="head"><span class="name">${m.name}</span>
+        <span class="rank ${i === 0 ? 'best' : ''}">${i === 0 ? 'Cheapest booked call' : '#' + (i + 1) + ' of ' + order.length}</span></div>
+      <div class="hero-num"><span class="label">Cost per booked call</span><span class="v">${money(m.cpb)}</span></div>
+      <dl class="rows">
+        <div><dt>Cost per show</dt><dd>${money(m.cps)}</dd></div>
+        <div><dt>Cost per lead</dt><dd>${money(m.cpl)}</dd></div>
+        <div><dt>No-show rate</dt><dd class="${m.noShowRate > 0.3 ? 'flag' : ''}">${pct(m.noShowRate)}</dd></div>
+        <div><dt>First reply (median)</dt><dd>${mins(m.medReply)}</dd></div>
+        <div><dt>Spend</dt><dd>${money(m.spend)}</dd></div>
+      </dl>
+    </article>`).join('');
+
+  // funnels
+  $('funnels').innerHTML = list.map(m => {
+    const steps = [['Leads', m.leads], ['Qualified', m.qualified], ['Booked', m.booked], ['Showed', m.showed]];
+    return `<div class="panel" style="--c:${m.c}"><h3>${srcLabel(m)}<span class="muted">${m.upcoming} upcoming</span></h3><div class="bars">` +
+      steps.map(([k, n], i) => {
+        const prev = i ? steps[i - 1][1] : null;
+        const tip = i ? `${n} of ${prev} ${steps[i - 1][0].toLowerCase()} (${pct(n / prev)}) became ${k.toLowerCase()}` : `${n} leads opted in`;
+        return `<div class="bar-row" data-tip="${m.name}: ${tip}"><span class="k">${k}</span>
+          <span class="t"><span class="f" style="display:block;width:${m.leads ? n / m.leads * 100 : 0}%"></span></span>
+          <span class="n">${n}${i ? ` <small>${pct(n / prev)}</small>` : ''}</span></div>`;
+      }).join('') + '</div></div>';
+  }).join('');
+
+  // costs: four small panels, same source order in each, lowest marked
+  const metrics = [
+    ['Cost per lead', 'cpl', money, false], ['Cost per booked call', 'cpb', money, false],
+    ['Cost per show', 'cps', money, false], ['No-show rate', 'noShowRate', pct, false],
+  ];
+  $('costs').innerHTML = metrics.map(([title, k, f]) => {
+    const vals = list.map(m => m[k]).filter(v => v != null && isFinite(v));
+    const max = Math.max(...vals), min = Math.min(...vals);
+    return `<div class="panel"><h3>${title}</h3><div class="bars">` + list.map(m => {
+      const v = m[k];
+      return `<div class="bar-row" style="--c:${m.c}" data-tip="${m.name} · ${title.toLowerCase()}: ${f(v)}">
+        <span class="k">${m.name}</span>
+        <span class="t"><span class="f" style="display:block;width:${isFinite(v) && max ? v / max * 100 : 0}%"></span></span>
+        <span class="n">${f(v)}${v === min ? ' <span class="tag-low">lowest</span>' : ''}</span></div>`;
+    }).join('') + '</div></div>';
+  }).join('');
+
+  // speed
+  $('speed').innerHTML = list.map(m => `
+    <div class="panel" style="--c:${m.c}"><h3>${srcLabel(m)}<span class="muted">${m.leads} leads</span></h3>
+      <dl class="rows">
+        <div><dt>Median</dt><dd>${mins(m.medReply)}</dd></div>
+        <div><dt>9 in 10 leads within</dt><dd>${mins(m.p90Reply)}</dd></div>
+        <div><dt>Replied within 5 min</dt><dd>${pct(m.within5)}</dd></div>
+        <div><dt>Never replied</dt><dd class="${m.unreplied ? 'flag' : ''}">${m.unreplied}</dd></div>
+      </dl>
+    </div>`).join('');
+
+  renderTrend();
+  renderTables(M);
+  const { start, end } = window_(RANGE);
+  const fmt = t => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  $('range-title').textContent = `Which source brings the cheapest booked calls? ${fmt(start)} – ${fmt(end)}`;
+}
+
+function renderTrend() {
+  const el = $('trend');
+  const end = new Date(DATA.generated_at).getTime();
+  const first = Math.min(...DATA.leads.map(l => +new Date(l[1])));
+  const weeks = [];
+  // Stop a week before today: the newest leads have not had time to book yet.
+  for (let t = first + 28 * DAY; t <= end - 7 * DAY; t += 7 * DAY) weeks.push(t);
+  const series = SOURCES.map(s => ({ ...s, pts: weeks.map(t => {
+    const a = t - 28 * DAY, da = new Date(a).toISOString().slice(0, 10), db = new Date(t).toISOString().slice(0, 10);
+    const spend = DATA.spend.filter(r => r[1] === s.key && r[0] > da && r[0] <= db).reduce((x, r) => x + +r[3], 0);
+    const booked = DATA.leads.filter(l => l[0] === s.key && l[5] && +new Date(l[5]) > a && +new Date(l[5]) <= t).length;
+    return { t, v: booked ? spend / booked : null, booked };
+  }) }));
+  const W = Math.max(320, el.clientWidth || 800), H = 260, P = { l: 52, r: 16, t: 14, b: 28 };
+  const all = series.flatMap(s => s.pts.map(p => p.v)).filter(v => v != null);
+  const yMax = Math.ceil(Math.max(...all) / 100) * 100;
+  const x = t => P.l + (t - weeks[0]) / (weeks[weeks.length - 1] - weeks[0]) * (W - P.l - P.r);
+  const y = v => P.t + (1 - v / yMax) * (H - P.t - P.b);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Rolling 4-week cost per booked call by source">`;
+  for (let v = 0; v <= yMax; v += yMax / 4) {
+    svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>`;
+    svg += `<text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end">${money(v)}</text>`;
+  }
+  const step = Math.ceil(weeks.length / Math.max(2, Math.floor((W - P.l) / 90)));
+  weeks.forEach((t, i) => { if (i % step === 0) svg += `<text x="${x(t)}" y="${H - 8}" text-anchor="middle">${new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</text>`; });
+  for (const s of series) {
+    const d = s.pts.map((p, i) => p.v == null ? '' : `${i && s.pts[i - 1].v != null ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join('');
+    svg += `<path d="${d}" fill="none" stroke="${s.c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const last = [...s.pts].reverse().find(p => p.v != null);
+    if (last) svg += `<circle cx="${x(last.t)}" cy="${y(last.v)}" r="4.5" fill="${s.c}" stroke="var(--surface)" stroke-width="2"/>`;
+  }
+  svg += `<line id="xh" y1="${P.t}" y2="${H - P.b}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/>`;
+  svg += `<rect x="${P.l}" y="${P.t}" width="${W - P.l - P.r}" height="${H - P.t - P.b}" fill="transparent" id="hit"/></svg>`;
+  el.innerHTML = svg;
+  $('trend-legend').innerHTML = series.map(s => {
+    const last = [...s.pts].reverse().find(p => p.v != null);
+    return `<span>${srcLabel(s)} latest ${money(last && last.v)}</span>`;
+  }).join('');
+  const hit = el.querySelector('#hit'), xh = el.querySelector('#xh'), svgEl = el.querySelector('svg');
+  hit.addEventListener('pointermove', ev => {
+    const r = svgEl.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+    let i = 0, best = Infinity;
+    weeks.forEach((t, j) => { const dd = Math.abs(x(t) - px); if (dd < best) { best = dd; i = j; } });
+    xh.setAttribute('x1', x(weeks[i])); xh.setAttribute('x2', x(weeks[i])); xh.setAttribute('visibility', 'visible');
+    showTip(ev, `<b>4 weeks to ${new Date(weeks[i]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</b><br>` +
+      series.map(s => `${s.name}: ${money(s.pts[i].v)} <span style="opacity:.7">(${s.pts[i].booked} booked)</span>`).join('<br>'));
+  });
+  hit.addEventListener('pointerleave', () => { xh.setAttribute('visibility', 'hidden'); hideTip(); });
+}
+
+function renderTables(M) {
+  const rows = [
+    ['Spend', 'spend', money], ['Leads', 'leads', String], ['Qualified', 'qualified', String],
+    ['Booked', 'booked', String], ['Showed', 'showed', String], ['No-shows', 'noshow', String],
+    ['Upcoming calls', 'upcoming', String], ['Cost per lead', 'cpl', money], ['Cost per booked call', 'cpb', money],
+    ['Cost per show', 'cps', money], ['No-show rate', 'noShowRate', pct], ['Median minutes to first reply', 'medReply', mins],
+    ['Replied within 5 min', 'within5', pct],
+  ];
+  $('tbl-main').innerHTML = `<thead><tr><th>Metric</th>${SOURCES.map(s => `<th>${s.name}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map(([k, f, fmt]) => `<tr><td>${k}</td>${SOURCES.map(s => `<td>${fmt(M[s.key][f])}</td>`).join('')}</tr>`).join('') + '</tbody>';
+
+  const { start, end } = window_(RANGE);
+  const a = new Date(start).toISOString().slice(0, 10), b = new Date(end).toISOString().slice(0, 10);
+  const months = [...new Set(DATA.spend.filter(r => r[0] >= a && r[0] <= b).map(r => r[0].slice(0, 7)))].sort();
+  const mName = m => new Date(m + '-15').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  let html = `<thead><tr><th class="l">Source / line item</th>${months.map(m => `<th>${mName(m)}</th>`).join('')}<th>Total</th></tr></thead><tbody>`;
+  for (const s of SOURCES) {
+    const R = DATA.spend.filter(r => r[1] === s.key && r[0] >= a && r[0] <= b);
+    const items = [...new Set(R.map(r => r[2]))];
+    const sum = (f) => R.filter(f).reduce((x, r) => x + +r[3], 0);
+    html += `<tr class="tot"><td class="l">${srcLabel(s)}</td>${months.map(m => `<td>${money(sum(r => r[0].startsWith(m)))}</td>`).join('')}<td>${money(sum(() => true))}</td></tr>`;
+    for (const it of items) html += `<tr class="sub"><td class="l">${it}</td>${months.map(m => `<td>${money(sum(r => r[2] === it && r[0].startsWith(m)))}</td>`).join('')}<td>${money(sum(r => r[2] === it))}</td></tr>`;
+  }
+  $('tbl-spend').innerHTML = html + '</tbody>';
+}
+
+// tooltips for bars
+const tip = $('tip');
+function showTip(ev, html) {
+  tip.innerHTML = html; tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = Math.min(window.innerWidth - w - 8, ev.clientX + 14) + 'px';
+  tip.style.top = Math.max(8, ev.clientY - h - 12) + 'px';
+}
+function hideTip() { tip.hidden = true; }
+document.addEventListener('pointermove', ev => {
+  const row = ev.target.closest && ev.target.closest('.bar-row');
+  if (row) showTip(ev, row.dataset.tip); else if (!ev.target.closest('#trend')) hideTip();
+});
+
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  RANGE = +b.dataset.days;
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  try { localStorage.setItem('stl-range', String(RANGE)); } catch (e) {}
+  render();
+}));
+let resizeT; window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(renderTrend, 150); });
+
+async function boot() {
+  try { const saved = localStorage.getItem('stl-range'); if (saved != null) { RANGE = +saved; document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', String(+x.dataset.days === RANGE))); } } catch (e) {}
+  let api = LIVE_API_URL;
+  try { api = new URLSearchParams(location.search).get('api') || api; } catch (e) {}
+  if (api) {
+    try {
+      const r = await fetch(api, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      DATA = await r.json();
+      $('data-pill').className = 'pill live';
+      $('data-pill').textContent = 'Live · updated ' + new Date(DATA.generated_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      $('source-note').textContent = 'Live data from the n8n Dashboard API. Refreshes every 5 minutes.';
+      setTimeout(boot, 5 * 60e3);
+    } catch (e) {
+      $('source-note').textContent = `Could not reach the live API (${e.message}), so this shows demo data.`;
+    }
+  }
+  if (!DATA) {
+    DATA = window.STL_DEMO_DATA;
+    $('source-note').textContent = $('source-note').textContent ||
+      'Demo data: simulated leads from the speed-to-lead system plus a realistic ad spend sheet (Jul 1 – Oct 9, 2026). Connect the Dashboard API to see live numbers.';
+  }
+  render();
+}
+boot();
+</script>
+</body>
+</html>

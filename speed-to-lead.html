@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Case study: a speed-to-lead revenue engine built with n8n, GoHighLevel and Claude.">
+  <title>Speed-to-Lead Engine | Sirine Ghader</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header class="case-hero">
+    <div class="container">
+      <a class="back-link" href="index.html#projects">← Back to portfolio</a>
+      <p class="eyebrow">Case study · n8n + GoHighLevel + Claude</p>
+      <h1>Speed-to-lead revenue engine</h1>
+      <p class="tagline">Every lead answered in about a minute, and a scorecard that shows which source is worth the money.</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== THE PROBLEM ===== -->
+    <section class="section">
+      <div class="container">
+        <h2>The problem</h2>
+        <p>
+          A B2B agency gets leads from Meta ads, its website and referrals. Replies took hours,
+          half of booked calls no-showed, and nobody knew what a booked call cost.
+        </p>
+        <p>
+          I built the system that replies in minutes, qualifies each lead with AI, books the call,
+          sends reminders and chases every lead. It also shows the owner which source brings the
+          cheapest booked calls.
+        </p>
+      </div>
+    </section>
+
+    <!-- ===== HOW IT WORKS: one <li> per step ===== -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>How it works</h2>
+        <ol class="flow">
+          <li>
+            <strong>A lead arrives from one of 3 sources</strong>
+            <span>Meta lead ads, the website form or a referral form. Each one is tagged with its source.</span>
+          </li>
+          <li>
+            <strong>Claude qualifies it</strong>
+            <span>Qualified, Not Qualified or Needs Review, with a 0-100 score and a one-line reason, against a written ideal-client profile.</span>
+          </li>
+          <li>
+            <strong>The reply goes out in about a minute</strong>
+            <span>Qualified leads get a booking link by SMS and email. Others get a polite reply, and the team is pinged for anything that needs review.</span>
+          </li>
+          <li>
+            <strong>Booked, rescheduled, cancelled or no-show</strong>
+            <span>Each moves the deal to the right stage. Reminders go out 24 hours and 2 hours before the call, and a no-show gets a re-book sequence.</span>
+          </li>
+          <li>
+            <strong>The owner sees which source pays</strong>
+            <span>A hosted dashboard shows cost per lead, per booked call and per show, plus the no-show rate and reply speed. It is split by source and never blended.</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ===== THE HARD PARTS ===== -->
+    <section class="section">
+      <div class="container">
+        <h2>The hard parts</h2>
+        <ul class="plain">
+          <li><strong>The same event can arrive 3 times.</strong> A database lock lets exactly one copy through, and every message is reserved in a send ledger before it goes out, so nobody gets the same message twice.</li>
+          <li><strong>A reschedule kills the old reminders.</strong> Reminders are tied to a version of the appointment and re-checked right before sending.</li>
+          <li><strong>A human reply stops everything.</strong> Any message the system didn't send pauses all automation for that lead.</li>
+          <li><strong>No silent errors.</strong> Crashes, refused messages and quiet problems (like a lead with no reply after 5 minutes) all reach Slack and email.</li>
+        </ul>
+        <p>23 automated checks prove each guarantee against a real database.</p>
+      </div>
+    </section>
+
+    <!-- ===== WHAT I BUILT ===== -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2>What I built</h2>
+        <div class="facts">
+          <div class="fact">
+            <span class="label">Automations</span>
+            <span class="value">9 n8n workflows</span>
+          </div>
+          <div class="fact">
+            <span class="label">AI</span>
+            <span class="value">Claude lead scoring</span>
+          </div>
+          <div class="fact">
+            <span class="label">Reply time</span>
+            <span class="value">~1 minute, 24/7</span>
+          </div>
+          <div class="fact">
+            <span class="label">Tools</span>
+            <span class="value">n8n, GoHighLevel, Postgres, Claude</span>
+          </div>
+        </div>
+        <div class="cta-row">
+          <a class="button" href="speed-to-lead/dashboard/">Open the live dashboard</a>
+          <a class="button button-ghost" href="https://github.com/sirineghader-dotcom/sirine-portfolio/tree/main/speed-to-lead" target="_blank" rel="noopener">See the workflows</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2026 Sirine Ghader</p>
+  </footer>
+
+</body>
+</html>

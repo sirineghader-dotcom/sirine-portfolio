@@ -1,0 +1,526 @@
+{
+  "name": "STL 03 \u00b7 Appointment events",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stl/appointment",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "36ec4392-b66a-5844-84d5-192eb658f791",
+      "name": "GHL appointment webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "f252ef02-9042-574a-8c78-efcadff61a6d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Accepts both GHL marketplace webhooks (AppointmentCreate/Update/Delete) and\n// a GHL workflow \"Webhook\" action fired from the Appointment Status trigger.\nconst b = $json.body || {};\nconst a = b.appointment || b.calendar || b;\nconst raw = String(a.appointmentStatus || a.appoinmentStatus || a.status || b.status || '').toLowerCase();\nlet status = { confirmed: 'booked', booked: 'booked', new: 'booked', cancelled: 'cancelled', canceled: 'cancelled',\n               noshow: 'noshow', 'no_show': 'noshow', 'no-show': 'noshow', showed: 'showed', invalid: 'cancelled' }[raw];\nif (b.type === 'AppointmentDelete') status = 'cancelled';\nconst id = a.id || a.appointmentId || b.appointment_id;\nconst contact = a.contactId || b.contact_id || b.contactId;\nconst start = new Date(a.startTime || a.start_time || b.start_time).toISOString();\nconst eventAt = new Date(a.dateUpdated || b.dateUpdated || b.event_at || Date.now()).toISOString();\nif (!id || !contact || !status) throw new Error(`Unrecognised appointment payload: ${JSON.stringify(b).slice(0, 500)}`);\nreturn { json: {\n  appointment_id: id, contact_id: contact, status, start_time: start, event_at: eventAt,\n  // the same appointment in the same state at the same time = the same event\n  event_key: `appt:${id}:${status}:${start}`,\n}};",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "aa320c9b-b324-5e64-8e5f-ce16a35718d6",
+      "name": "Normalize appointment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO processed_events (event_key, kind, payload)\nVALUES ($1, 'appointment', $2::jsonb)\nON CONFLICT (event_key) DO UPDATE SET hits = processed_events.hits + 1\nRETURNING event_key, (xmax = 0) AS is_new, hits;",
+        "options": {
+          "queryReplacement": "={{ [ $json.event_key, JSON.stringify($json) ] }}"
+        }
+      },
+      "id": "a4786422-71f1-52a2-b0fb-a91d7d75cfab",
+      "name": "Claim event (dedupe)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        440,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "dd4e5718-8c6e-50b7-9ec8-a9e2e5bbba08",
+              "leftValue": "={{ $json.is_new }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a093f148-0e9c-58ba-b0a2-957601e84878",
+      "name": "First time we see it?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3143e503-a4c0-5c1d-99a6-e6169cbfd9f3",
+      "name": "Duplicate: stop here",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        880,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_object_agg(key, value) AS cfg FROM settings;",
+        "options": {}
+      },
+      "id": "d5268ade-e4b0-5f8a-bb31-6b334036f277",
+      "name": "Load settings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        880,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Upsert the appointment and compare with what we knew before.\n-- Out-of-order events (older than the last one applied) are ignored.\nWITH i AS (SELECT $1::jsonb AS p),\nlead AS (SELECT id FROM leads WHERE contact_id = (SELECT p->>'contact_id' FROM i)\n         ORDER BY opted_in_at DESC LIMIT 1),\nprev AS (SELECT start_time, status, version FROM appointments\n         WHERE appointment_id = (SELECT p->>'appointment_id' FROM i)),\nup AS (\n  INSERT INTO appointments (appointment_id, lead_id, contact_id, start_time, status, last_event_at)\n  SELECT p->>'appointment_id', (SELECT id FROM lead), p->>'contact_id',\n         (p->>'start_time')::timestamptz, p->>'status', (p->>'event_at')::timestamptz FROM i\n  ON CONFLICT (appointment_id) DO UPDATE SET\n    status = EXCLUDED.status,\n    version = appointments.version\n              + CASE WHEN appointments.start_time <> EXCLUDED.start_time THEN 1 ELSE 0 END,\n    start_time = EXCLUDED.start_time,\n    last_event_at = EXCLUDED.last_event_at,\n    lead_id = COALESCE(appointments.lead_id, EXCLUDED.lead_id),\n    updated_at = now()\n  WHERE appointments.last_event_at <= EXCLUDED.last_event_at\n  RETURNING *\n)\nSELECT up.appointment_id, up.contact_id, up.lead_id, up.start_time, up.version, up.status,\n       l.opportunity_id, l.automation_paused,\n       CASE\n         WHEN up.appointment_id IS NULL                     THEN 'stale'\n         WHEN up.lead_id IS NULL                            THEN 'unknown_lead'\n         WHEN up.status = 'cancelled'                       THEN 'cancelled'\n         WHEN up.status = 'noshow'                          THEN 'noshow'\n         WHEN up.status = 'showed'                          THEN 'showed'\n         WHEN prev.status IS NULL                           THEN 'booked'\n         WHEN prev.start_time <> up.start_time              THEN 'rescheduled'\n         WHEN prev.status IN ('cancelled', 'noshow')        THEN 'booked'\n         ELSE 'unchanged'\n       END AS action\nFROM (SELECT 1) one\nLEFT JOIN up ON true\nLEFT JOIN prev ON true\nLEFT JOIN leads l ON l.id = up.lead_id;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($('Normalize appointment').item.json) ] }}"
+        }
+      },
+      "id": "bc3b4e48-3872-52cd-85b8-1dd2a935cef9",
+      "name": "Apply state + decide action",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1100,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// One table that says what each appointment outcome does.\nconst a = $json;\nconst start = new Date(a.start_time).getTime(), now = Date.now();\nconst at = ms => new Date(ms).toISOString();\nconst key = t => `${a.appointment_id}:v${a.version}:${t}`;\nconst reminders = [\n  ['reminder_24h_email', 'Email', start - 24 * 3600e3],\n  ['reminder_24h_sms',   'SMS',   start - 24 * 3600e3],\n  ['reminder_2h_sms',    'SMS',   start - 2 * 3600e3],\n].filter(([, , t]) => t > now + 10 * 60e3);   // skip reminders that would already be late\n\nconst P = {\n  booked: {\n    stage: 'STAGE_CALL_BOOKED', lead_stage: 'call_booked',\n    cancel: ['chase', 'rebook', 'reminder'], why: 'call booked',\n    now: ['booking_confirmed_sms', 'booking_confirmed_email'],\n    later: reminders.map(([t, ch, ms]) => ({ sequence: 'reminder', template_key: t, channel: ch, send_at: at(ms) })),\n  },\n  rescheduled: {\n    stage: 'STAGE_CALL_RESCHEDULED', lead_stage: 'call_rescheduled',\n    cancel: ['chase', 'rebook', 'reminder'], why: 'rescheduled, old reminders killed',\n    now: ['booking_rescheduled_sms', 'booking_rescheduled_email'],\n    later: reminders.map(([t, ch, ms]) => ({ sequence: 'reminder', template_key: t, channel: ch, send_at: at(ms) })),\n  },\n  cancelled: {\n    stage: 'STAGE_CALL_CANCELLED', lead_stage: 'call_cancelled',\n    cancel: ['chase', 'reminder'], why: 'appointment cancelled',\n    now: ['cancel_rebook_1_sms'],\n    later: [{ sequence: 'rebook', template_key: 'cancel_rebook_2_email', channel: 'Email', send_at: at(now + 2 * 86400e3) }],\n  },\n  noshow: {\n    stage: 'STAGE_NO_SHOW', lead_stage: 'no_show',\n    cancel: ['chase', 'reminder'], why: 'no-show',\n    now: [],\n    later: [\n      { sequence: 'rebook', template_key: 'noshow_rebook_1_sms',   channel: 'SMS',   send_at: at(now + 15 * 60e3) },\n      { sequence: 'rebook', template_key: 'noshow_rebook_2_email', channel: 'Email', send_at: at(now + 86400e3) },\n      { sequence: 'rebook', template_key: 'noshow_rebook_3_sms',   channel: 'SMS',   send_at: at(now + 3 * 86400e3) },\n    ],\n  },\n  showed: { stage: 'STAGE_SHOWED', lead_stage: 'showed', cancel: ['chase', 'rebook', 'reminder'], why: 'showed', now: [], later: [] },\n}[a.action];\n\nconst chan = t => (t.endsWith('_sms') ? 'SMS' : 'Email');\nreturn { json: {\n  ...a, plan: {\n    stage_key: P.stage, lead_stage: P.lead_stage, cancel: P.cancel, why: P.why,\n    later: P.later.map(m => ({ ...m, dedupe_key: key(m.template_key) })),\n    now: P.now.map(t => ({ template_key: t, channel: chan(t), dedupe_key: key(t) })),\n  },\n}};",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "ed0d820c-0968-50a2-ba7c-b6ca9052d92e",
+      "name": "Plan: stage, cancels, new messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "90919781-8860-595d-9667-813c9235a38a",
+              "leftValue": "={{ ['booked','rescheduled','cancelled','noshow','showed'].includes($json.action) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d578f1d8-98ed-5ab0-b2fd-14ebd40c4cbf",
+      "name": "Something to do?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "15fee91a-afa3-5f52-a632-e0461928090a",
+              "leftValue": "={{ $json.action === 'unknown_lead' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "76571b00-2947-5473-aad7-0b10023d9ffd",
+      "name": "Unknown contact?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: {\n  severity: 'warning',\n  workflow: $workflow.name,\n  node: $prevNode.name,\n  message: `Appointment ${$json.appointment_id} belongs to a contact that never came through the lead intake. Check the source in GHL.`,\n  alert_key: 'unknown_appt:' + $json.appointment_id,\n  execution_id: $execution.id,\n  context: $json,\n} };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "d4e2c843-25a6-5ab3-8388-c595f9a2b475",
+      "name": "Alert: unknown contact",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_ALERT__",
+        "options": {}
+      },
+      "id": "0ecaff0e-9b2e-5f11-808a-c27c05c7b90a",
+      "name": "Send alert",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Kill every pending message in the cancelled sequences for this lead, then\n-- queue the new ones (tied to the appointment version), then update the lead.\nWITH i AS (SELECT $1::jsonb AS p),\nkilled AS (\n  UPDATE scheduled_messages s SET status = 'cancelled', cancel_reason = i.p->'plan'->>'why', done_at = now()\n  FROM i\n  WHERE s.lead_id = (i.p->>'lead_id')::uuid AND s.status = 'pending'\n    AND s.sequence IN (SELECT jsonb_array_elements_text(i.p->'plan'->'cancel'))\n  RETURNING s.id\n),\nqueued AS (\n  INSERT INTO scheduled_messages (lead_id, contact_id, appointment_id, appointment_version,\n                                  sequence, template_key, channel, send_at, dedupe_key)\n  SELECT (i.p->>'lead_id')::uuid, i.p->>'contact_id', i.p->>'appointment_id', (i.p->>'version')::int,\n         m.sequence, m.template_key, m.channel, m.send_at, m.dedupe_key\n  FROM i, jsonb_to_recordset(i.p->'plan'->'later')\n       AS m(sequence text, template_key text, channel text, send_at timestamptz, dedupe_key text)\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING id\n),\nlead AS (\n  UPDATE leads SET\n    stage      = i.p->'plan'->>'lead_stage',\n    booked_at  = CASE WHEN i.p->>'action' IN ('booked','rescheduled') THEN COALESCE(booked_at, now()) ELSE booked_at END,\n    showed_at  = CASE WHEN i.p->>'action' = 'showed' THEN COALESCE(showed_at, now()) ELSE showed_at END,\n    no_show_at = CASE WHEN i.p->>'action' = 'noshow' THEN COALESCE(no_show_at, now()) ELSE no_show_at END,\n    updated_at = now()\n  FROM i WHERE leads.id = (i.p->>'lead_id')::uuid\n  RETURNING leads.id\n)\nSELECT (SELECT count(*) FROM killed) AS cancelled_count,\n       (SELECT count(*) FROM queued) AS queued_count,\n       (SELECT count(*) FROM lead)   AS lead_updated;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json) ] }}"
+        }
+      },
+      "id": "4ddf2998-3d65-51d9-846f-59ea322ae4a6",
+      "name": "Cancel old + schedule new",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1760,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://services.leadconnectorhq.com/opportunities/{{ $('Plan: stage, cancels, new messages').item.json.opportunity_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  pipelineStageId: $('Load settings').first().json.cfg[$('Plan: stage, cancels, new messages').item.json.plan.stage_key],\n  status: 'open'\n}) }}"
+      },
+      "id": "541d64f9-d4c4-5fc5-a897-4e96da028a11",
+      "name": "Move deal stage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "stl-ghl",
+          "name": "GHL Private Integration"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const a = $('Plan: stage, cancels, new messages').first().json;\nreturn a.plan.now.map(m => ({ json: {\n  lead_id: a.lead_id, contact_id: a.contact_id, appointment_id: a.appointment_id, ...m,\n}}));"
+      },
+      "id": "f01ad10a-a9d9-5374-9fcd-b6885f9a3b57",
+      "name": "Messages to send now",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_SEND_MESSAGE__",
+        "options": {}
+      },
+      "id": "7e904379-cea4-5c29-969b-3a085f8527d0",
+      "name": "Send now",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2420,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "GHL appointment webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize appointment": {
+      "main": [
+        [
+          {
+            "node": "Claim event (dedupe)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim event (dedupe)": {
+      "main": [
+        [
+          {
+            "node": "First time we see it?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First time we see it?": {
+      "main": [
+        [
+          {
+            "node": "Load settings",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Duplicate: stop here",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load settings": {
+      "main": [
+        [
+          {
+            "node": "Apply state + decide action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply state + decide action": {
+      "main": [
+        [
+          {
+            "node": "Something to do?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Something to do?": {
+      "main": [
+        [
+          {
+            "node": "Plan: stage, cancels, new messages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknown contact?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unknown contact?": {
+      "main": [
+        [
+          {
+            "node": "Alert: unknown contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert: unknown contact": {
+      "main": [
+        [
+          {
+            "node": "Send alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan: stage, cancels, new messages": {
+      "main": [
+        [
+          {
+            "node": "Cancel old + schedule new",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel old + schedule new": {
+      "main": [
+        [
+          {
+            "node": "Move deal stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move deal stage": {
+      "main": [
+        [
+          {
+            "node": "Messages to send now",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Messages to send now": {
+      "main": [
+        [
+          {
+            "node": "Send now",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "__WF_ERROR_HANDLER__"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}
