@@ -17,7 +17,7 @@ the cheapest booked calls.
 | Database schema | [`sql/schema.sql`](sql/schema.sql) |
 | Proof the guarantees hold | [`scripts/test_guarantees.py`](scripts/test_guarantees.py) (23 checks against real Postgres) |
 | Test-lead simulator (for the Loom) | [`scripts/simulate.sh`](scripts/simulate.sh) |
-| Loom script | [below](#loom-script) |
+| Loom script | [below](#loom-script), with diagrams in [`diagram.html`](diagram.html) |
 
 ---
 
