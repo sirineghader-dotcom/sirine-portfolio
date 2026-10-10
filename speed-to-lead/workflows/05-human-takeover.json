@@ -1,0 +1,571 @@
+{
+  "name": "STL 05 \u00b7 Human takeover + replies",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stl/message",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "8a90d94c-c0d3-5d27-a0e3-0e611f397328",
+      "name": "GHL message webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "11448ab8-e7fc-5c8f-8529-e8264419ef46"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GHL OutboundMessage / InboundMessage webhooks (marketplace app or workflow relay).\nconst b = $json.body || {};\nconst direction = String(b.direction || (b.type === 'InboundMessage' ? 'inbound' : 'outbound')).toLowerCase();\nconst id = b.messageId || b.message_id || b.id;\nif (!id || !b.contactId && !b.contact_id) throw new Error(`Unrecognised message payload: ${JSON.stringify(b).slice(0, 500)}`);\nreturn { json: {\n  message_id: id, contact_id: b.contactId || b.contact_id, direction,\n  user_id: b.userId || b.user_id || null, channel: b.messageType || b.channel || null,\n  body: String(b.body || b.message || '').slice(0, 500),\n  event_key: `msg:${id}`,\n}};",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "7186a866-1d72-5ac6-bcaa-087de2e8ed8b",
+      "name": "Normalize message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO processed_events (event_key, kind, payload)\nVALUES ($1, 'message', $2::jsonb)\nON CONFLICT (event_key) DO UPDATE SET hits = processed_events.hits + 1\nRETURNING event_key, (xmax = 0) AS is_new, hits;",
+        "options": {
+          "queryReplacement": "={{ [ $json.event_key, JSON.stringify($json) ] }}"
+        }
+      },
+      "id": "d02bc33f-8530-55eb-95ef-5e6d09a7ac33",
+      "name": "Claim event (dedupe)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        440,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "dd4e5718-8c6e-50b7-9ec8-a9e2e5bbba08",
+              "leftValue": "={{ $json.is_new }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1c30c6e0-cf1f-5bed-966e-c3d67e583238",
+      "name": "First time we see it?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "720a2eb6-75e2-581f-8271-ffbcfe08d386",
+      "name": "Duplicate: stop here",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        880,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "5eb112c1-ff45-58ae-8d29-76aefe87bcbe",
+              "leftValue": "={{ $('Normalize message').item.json.direction === 'outbound' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7e18382c-3c9e-5ce6-9765-9f42e4528983",
+      "name": "Outbound?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 20,
+        "unit": "seconds"
+      },
+      "id": "4f827580-b050-59bb-9e29-305e9d6b5259",
+      "name": "Wait 20s for ledger",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        100
+      ],
+      "webhookId": "10d9b1fc-1503-5c34-84bc-5e66bcc951c1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT EXISTS (SELECT 1 FROM sent_messages WHERE ghl_message_id = $1) AS ours,\n       EXISTS (SELECT 1 FROM sent_messages WHERE contact_id = $2 AND status = 'reserved'\n               AND reserved_at > now() - interval '2 minutes') AS send_in_flight,\n       (SELECT id FROM leads WHERE contact_id = $2 ORDER BY opted_in_at DESC LIMIT 1) AS lead_id;",
+        "options": {
+          "queryReplacement": "={{ [ $('Normalize message').item.json.message_id, $('Normalize message').item.json.contact_id ] }}"
+        }
+      },
+      "id": "e3ac704c-5d10-56aa-b782-a019d67e838c",
+      "name": "Was it sent by automation?",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1320,
+        100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "8eef99b0-22b3-5401-be55-e21f22a5b745",
+              "leftValue": "={{ !$json.ours && !!$json.lead_id && (!$json.send_in_flight || !!$('Normalize message').item.json.user_id) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "af2b746e-8ba7-5e32-b09e-fc5e6ca8c5ba",
+      "name": "Human sent it?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH paused AS (\n  UPDATE leads SET automation_paused = true, paused_reason = $2, paused_at = now(), updated_at = now()\n  WHERE contact_id = $1 AND NOT automation_paused\n  RETURNING id, first_name, company, source\n),\nkilled AS (\n  UPDATE scheduled_messages SET status = 'cancelled', cancel_reason = $2, done_at = now()\n  WHERE contact_id = $1 AND status = 'pending'\n  RETURNING id\n)\nSELECT (SELECT count(*) FROM paused) AS leads_paused, (SELECT count(*) FROM killed) AS messages_cancelled,\n       (SELECT jsonb_agg(paused) FROM paused) AS leads;",
+        "options": {
+          "queryReplacement": "={{ [ $('Normalize message').item.json.contact_id, 'human_reply' ] }}"
+        }
+      },
+      "id": "c9bbb1d3-ea01-5770-ac26-4a56a3e85982",
+      "name": "Pause lead + cancel queue",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1760,
+        100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Normalize message').item.json.contact_id }}/tags",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ tags: ['human-takeover'] }) }}"
+      },
+      "id": "41d027bb-2289-569b-9b2e-08e8ff0f45fe",
+      "name": "Tag human-takeover",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        100
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "stl-ghl",
+          "name": "GHL Private Integration"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "jsCode": "const m = $('Normalize message').first().json, r = $('Pause lead + cancel queue').first().json;\nreturn { json: {\n  severity: 'info', workflow: $workflow.name, node: 'Notice: automation paused',\n  message: `A team member replied to contact ${m.contact_id}. Automation is now OFF for this lead and ${r.messages_cancelled} queued message(s) were cancelled.`,\n  alert_key: 'takeover:' + m.contact_id, execution_id: $execution.id, context: { contact_id: m.contact_id },\n}};",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "78d02442-7572-5f1e-b072-3b5e2f95b95d",
+      "name": "Notice: automation paused",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_ALERT__",
+        "options": {}
+      },
+      "id": "cc63e5e4-df59-5857-8046-9f1ad9b9e8fd",
+      "name": "Send notice",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        2420,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "5280aedf-46ab-57d1-a5e4-959987b82215",
+              "leftValue": "={{ /^\\s*(stop|unsubscribe|cancel|end|quit|stopall)\\s*$/i.test($('Normalize message').item.json.body) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c7787ec5-b806-5a4e-9c6b-54e4f41e1918",
+      "name": "Opt-out word?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH paused AS (\n  UPDATE leads SET automation_paused = true, paused_reason = 'opted_out', paused_at = now()\n  WHERE contact_id = $1 AND NOT automation_paused RETURNING id\n)\nUPDATE scheduled_messages SET status = 'cancelled', cancel_reason = 'opted_out', done_at = now()\nWHERE contact_id = $1 AND status = 'pending' RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('Normalize message').item.json.contact_id ] }}"
+        }
+      },
+      "id": "b6d650dc-f4df-584a-8643-dc234c492364",
+      "name": "Pause lead (opted out)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1320,
+        260
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const m = $('Normalize message').first().json;\nreturn { json: {\n  severity: 'info', workflow: $workflow.name, node: 'Notice: lead replied',\n  message: `Lead ${m.contact_id} replied by ${m.channel || 'message'}: \"${m.body}\". Reply in GHL; your reply pauses the automation for them.`,\n  alert_key: 'reply:' + m.message_id, execution_id: $execution.id, context: { contact_id: m.contact_id },\n}};",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "97e93b05-eb4d-51a7-8e41-f6aff71cf912",
+      "name": "Notice: lead replied",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_ALERT__",
+        "options": {}
+      },
+      "id": "4ae44534-21d8-5d8e-ab9f-dcd6615baa2d",
+      "name": "Send reply notice",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "GHL message webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize message": {
+      "main": [
+        [
+          {
+            "node": "Claim event (dedupe)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim event (dedupe)": {
+      "main": [
+        [
+          {
+            "node": "First time we see it?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First time we see it?": {
+      "main": [
+        [
+          {
+            "node": "Outbound?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Duplicate: stop here",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outbound?": {
+      "main": [
+        [
+          {
+            "node": "Wait 20s for ledger",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Opt-out word?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 20s for ledger": {
+      "main": [
+        [
+          {
+            "node": "Was it sent by automation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Was it sent by automation?": {
+      "main": [
+        [
+          {
+            "node": "Human sent it?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human sent it?": {
+      "main": [
+        [
+          {
+            "node": "Pause lead + cancel queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pause lead + cancel queue": {
+      "main": [
+        [
+          {
+            "node": "Tag human-takeover",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag human-takeover": {
+      "main": [
+        [
+          {
+            "node": "Notice: automation paused",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notice: automation paused": {
+      "main": [
+        [
+          {
+            "node": "Send notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opt-out word?": {
+      "main": [
+        [
+          {
+            "node": "Pause lead (opted out)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notice: lead replied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notice: lead replied": {
+      "main": [
+        [
+          {
+            "node": "Send reply notice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "__WF_ERROR_HANDLER__"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}

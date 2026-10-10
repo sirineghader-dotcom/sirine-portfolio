@@ -1,0 +1,149 @@
+{
+  "name": "STL 08 \u00b7 Watchdog (every 5 min)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "a135ce18-37d7-537c-8d4f-6f092ddfd8b8",
+      "name": "Every 5 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Each row becomes one alert. alert_key makes sure each problem alerts once.\nSELECT 'no_first_reply:' || id AS alert_key, 'critical' AS severity,\n       format('%s lead %s (%s) opted in %s min ago and has had NO reply.',\n              initcap(source), COALESCE(first_name, '?'), COALESCE(email, phone),\n              round(extract(epoch FROM now() - opted_in_at) / 60)) AS message,\n       jsonb_build_object('lead_id', id) AS context\nFROM leads\nWHERE first_reply_at IS NULL AND NOT automation_paused\n  AND opted_in_at < now() - interval '5 minutes' AND opted_in_at > now() - interval '3 days'\nUNION ALL\nSELECT 'scheduler_late:' || to_char(now(), 'YYYYMMDDHH24'), 'critical',\n       format('%s scheduled message(s) are more than 10 min overdue. Is \"STL 04 \u00b7 Scheduler\" active?', count(*)),\n       '{}'::jsonb\nFROM scheduled_messages WHERE status = 'pending' AND send_at < now() - interval '10 minutes'\nHAVING count(*) > 0\nUNION ALL\nSELECT 'stuck_sending:' || id, 'error',\n       format('Scheduled \"%s\" for lead %s has been stuck in sending since %s.', template_key, lead_id, locked_at),\n       jsonb_build_object('scheduled_id', id)\nFROM scheduled_messages WHERE status = 'sending' AND locked_at < now() - interval '10 minutes'\nUNION ALL\nSELECT 'stuck_reserved:' || dedupe_key, 'error',\n       format('Message \"%s\" to contact %s was reserved %s ago but never confirmed by GHL.', template_key, contact_id,\n              date_trunc('minute', now() - reserved_at)),\n       jsonb_build_object('dedupe_key', dedupe_key)\nFROM sent_messages WHERE status = 'reserved' AND reserved_at < now() - interval '10 minutes'\nUNION ALL\nSELECT 'review_waiting:' || id, 'warning',\n       format('%s (%s, score %s) has waited over 2 hours in Needs Review: %s', COALESCE(first_name, '?'),\n              COALESCE(company, 'no company'), score, reason),\n       jsonb_build_object('lead_id', id)\nFROM leads\nWHERE stage = 'needs_review' AND NOT automation_paused\n  AND opted_in_at < now() - interval '2 hours' AND opted_in_at > now() - interval '3 days';",
+        "options": {}
+      },
+      "id": "dc4bf919-56d0-5c38-a80d-00c7924db8f9",
+      "name": "Find silent problems",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        220,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: { ...$json, workflow: $workflow.name, node: 'Find silent problems', execution_id: $execution.id } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "a1cde49e-63a1-58da-802a-d3398e4930a7",
+      "name": "Shape alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_ALERT__",
+        "options": {}
+      },
+      "id": "f96020c1-3404-545b-8438-72c350ee25e0",
+      "name": "Send alerts",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://hc-ping.com/REPLACE_WITH_YOUR_CHECK_UUID",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "2e463c03-5242-5183-902e-f858f781d473",
+      "name": "Heartbeat ping",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Every 5 minutes": {
+      "main": [
+        [
+          {
+            "node": "Find silent problems",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Heartbeat ping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find silent problems": {
+      "main": [
+        [
+          {
+            "node": "Shape alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape alerts": {
+      "main": [
+        [
+          {
+            "node": "Send alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "__WF_ERROR_HANDLER__"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}

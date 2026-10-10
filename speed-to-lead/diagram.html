@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Speed-to-Lead System Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Layout: two numbered figures in Loom order (the lead's journey, then the real work),
+     each sized to fill a screen recording, with short talking points underneath. */
+  :root {
+    --bg: #f6f6fa;
+    --surface: #ffffff;
+    --ink: #17161f;
+    --muted: #6c6a7c;
+    --line: #d9d7e4;
+    --accent: #6d28d9;        /* the portfolio's violet: marks Claude and the guards */
+    --accent-soft: #efe9fd;
+    --good: #0b7a3b;
+    --good-soft: #e3f4ea;
+    --bad: #c43c3c;
+    --bad-soft: #fbe7e7;
+    --warn: #a86400;
+    --meta: #2a78d6;
+    --website: #eb6834;
+    --referral: #1baf7a;
+    --font-display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+    --font-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121117; --surface: #1c1b24; --ink: #f2f1f7; --muted: #a3a1b3; --line: #35333f;
+      --accent: #a78bfa; --accent-soft: #2a2347; --good: #5fd08f; --good-soft: #15301f;
+      --bad: #ef7d7d; --bad-soft: #3a1c1c; --warn: #f0b75a;
+      --meta: #3987e5; --website: #d95926; --referral: #199e70;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121117; --surface: #1c1b24; --ink: #f2f1f7; --muted: #a3a1b3; --line: #35333f;
+    --accent: #a78bfa; --accent-soft: #2a2347; --good: #5fd08f; --good-soft: #15301f;
+    --bad: #ef7d7d; --bad-soft: #3a1c1c; --warn: #f0b75a;
+    --meta: #3987e5; --website: #d95926; --referral: #199e70;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font-body); }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 32px 16px 64px; display: grid; gap: 56px; }
+  h1, h2 { font-family: var(--font-display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  h1 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); }
+  h2 { font-size: clamp(1.3rem, 2.6vw, 1.7rem); }
+  p { margin: 0; }
+  .eyebrow { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  header.page { display: grid; gap: 8px; max-width: 70ch; }
+  header.page p { color: var(--muted); }
+
+  section.part { display: grid; gap: 18px; }
+  .part-head { display: flex; gap: 14px; align-items: baseline; }
+  .num { font-family: var(--font-display); font-weight: 700; font-size: 1rem; color: var(--surface); background: var(--accent); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .part-head p { color: var(--muted); }
+
+  figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
+  figcaption { color: var(--muted); font-size: 0.92rem; max-width: 80ch; }
+  .scroll { overflow-x: auto; }
+  .scroll svg { min-width: 860px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 18px; }
+  .grid2 figure h3 { font-family: var(--font-display); font-size: 1.1rem; margin: 0; }
+  .grid2 .scroll svg { min-width: 480px; }
+
+  svg { display: block; width: 100%; height: auto; color: var(--muted); font-family: var(--font-body); }
+  svg .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+  svg .box-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  svg .box-good { fill: var(--good-soft); stroke: var(--good); stroke-width: 1.5; }
+  svg .box-bad { fill: var(--bad-soft); stroke: var(--bad); stroke-width: 1.5; }
+  svg .t { fill: var(--ink); font-size: 15px; font-weight: 700; }
+  svg .s { fill: var(--muted); font-size: 12.5px; }
+  svg .l { fill: var(--muted); font-size: 12px; font-style: italic; }
+  svg .l-acc { fill: var(--accent); font-size: 12.5px; font-weight: 600; }
+  svg .l-bad { fill: var(--bad); font-size: 12.5px; font-weight: 600; }
+  svg .l-good { fill: var(--good); font-size: 12.5px; font-weight: 600; }
+  svg .row { fill: var(--ink); font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  svg .ln { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  svg .ln-acc { stroke: var(--accent); stroke-width: 2; fill: none; }
+  svg .ln-bad { stroke: var(--bad); stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+  svg .ln-good { stroke: var(--good); stroke-width: 2; fill: none; }
+  svg .rule { stroke: var(--line); stroke-width: 1; }
+  svg .ah { fill: var(--muted); }
+  svg .ah-acc { fill: var(--accent); }
+  svg .ah-bad { fill: var(--bad); }
+  svg .ah-good { fill: var(--good); }
+  svg .f-meta { fill: var(--meta); } svg .f-web { fill: var(--website); } svg .f-ref { fill: var(--referral); }
+  svg .f-good { fill: var(--good); } svg .f-bad { fill: var(--bad); } svg .f-warn { fill: var(--warn); } svg .f-muted { fill: var(--muted); }
+  svg .f-acc { fill: var(--accent); }
+
+  .say { display: grid; gap: 6px; padding-left: 0; margin: 0; list-style: none; max-width: 90ch; }
+  .say li { display: grid; grid-template-columns: auto 1fr; gap: 10px; color: var(--ink); }
+  .say li::before { content: "Say"; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 6px; height: fit-content; margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="page">
+    <span class="eyebrow">Speed-to-lead revenue engine · n8n + GoHighLevel + Claude</span>
+    <h1>How one lead becomes a booked call</h1>
+    <p>Two pictures for the walkthrough: the path a lead takes, then the four safety rules that keep it from going wrong.</p>
+  </header>
+
+  <!-- ================= PART 1 ================= -->
+  <section class="part" id="journey">
+    <div class="part-head"><span class="num">1</span><div><h2>One lead, from opt-in to booked call</h2></div></div>
+    <figure>
+      <div class="scroll">
+        <svg viewBox="0 0 1200 700" role="img" aria-label="A lead from Meta, the website or a referral passes a dedupe gate, gets a GoHighLevel contact and deal, is scored by Claude and gets a first reply in about a minute. A qualified lead is chased until it books; each call outcome (booked, rescheduled, cancelled, showed, no-show) moves the deal and starts the right messages.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+            <marker id="ah-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-acc"/></marker>
+            <marker id="ah-good" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-good"/></marker>
+            <marker id="ah-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-bad"/></marker>
+          </defs>
+
+          <!-- ROW 1: opt-in to first reply -->
+          <text x="20" y="28" class="row">Opt-in → first reply</text>
+
+          <!-- sources -->
+          <rect x="20" y="56" width="170" height="46" rx="8" class="box"/><rect x="20" y="56" width="6" height="46" rx="3" class="f-meta"/>
+          <text x="38" y="76" class="t">Meta lead ad</text><text x="38" y="93" class="s">tag: source-meta</text>
+          <rect x="20" y="126" width="170" height="46" rx="8" class="box"/><rect x="20" y="126" width="6" height="46" rx="3" class="f-web"/>
+          <text x="38" y="146" class="t">Website form</text><text x="38" y="163" class="s">tag: source-website</text>
+          <rect x="20" y="196" width="170" height="46" rx="8" class="box"/><rect x="20" y="196" width="6" height="46" rx="3" class="f-ref"/>
+          <text x="38" y="216" class="t">Referral form</text><text x="38" y="233" class="s">tag: source-referral</text>
+
+          <path d="M190 79 C 215 79, 215 140, 238 145" class="ln" marker-end="url(#ah)"/>
+          <path d="M190 149 L 238 149" class="ln" marker-end="url(#ah)"/>
+          <path d="M190 219 C 215 219, 215 158, 238 153" class="ln" marker-end="url(#ah)"/>
+          <text x="214" y="52" class="l" text-anchor="middle">webhook</text>
+
+          <!-- gate -->
+          <rect x="240" y="110" width="170" height="80" rx="10" class="box-acc"/>
+          <text x="325" y="143" class="t" text-anchor="middle">Dedupe gate</text>
+          <text x="325" y="163" class="s" text-anchor="middle">1 copy passes, extras stop</text>
+
+          <path d="M410 150 L 458 150" class="ln" marker-end="url(#ah)"/>
+          <text x="434" y="140" class="l" text-anchor="middle">new</text>
+
+          <!-- GHL -->
+          <rect x="460" y="110" width="170" height="80" rx="10" class="box"/>
+          <text x="545" y="143" class="t" text-anchor="middle">GHL contact + deal</text>
+          <text x="545" y="163" class="s" text-anchor="middle">stage: New Lead</text>
+
+          <path d="M630 150 L 678 150" class="ln" marker-end="url(#ah)"/>
+          <text x="654" y="140" class="l" text-anchor="middle">answers</text>
+
+          <!-- Claude -->
+          <rect x="680" y="110" width="170" height="80" rx="10" class="box-acc"/>
+          <text x="765" y="143" class="t" text-anchor="middle">Claude qualifies</text>
+          <text x="765" y="163" class="s" text-anchor="middle">score 0–100 + reason</text>
+
+          <path d="M850 140 C 880 140, 880 79, 908 79" class="ln-good" marker-end="url(#ah-good)"/>
+          <path d="M850 150 L 908 149" class="ln" marker-end="url(#ah)"/>
+          <path d="M850 160 C 880 160, 880 219, 908 219" class="ln" marker-end="url(#ah)"/>
+
+          <!-- outcomes -->
+          <rect x="910" y="56" width="270" height="46" rx="8" class="box-good"/>
+          <text x="926" y="76" class="t">Qualified · score 70+</text><text x="926" y="93" class="s">booking link by SMS + email</text>
+          <rect x="910" y="126" width="270" height="46" rx="8" class="box"/><rect x="910" y="126" width="6" height="46" rx="3" class="f-warn"/>
+          <text x="926" y="146" class="t">Needs review</text><text x="926" y="163" class="s">holding reply + team pinged in Slack</text>
+          <rect x="910" y="196" width="270" height="46" rx="8" class="box"/><rect x="910" y="196" width="6" height="46" rx="3" class="f-muted"/>
+          <text x="926" y="216" class="t">Not qualified</text><text x="926" y="233" class="s">one polite email, deal marked lost</text>
+
+          <!-- timing bracket -->
+          <path d="M20 268 V 278 H 1180 V 268" class="ln-acc"/>
+          <text x="20" y="300" class="l-acc">opt-in</text>
+          <text x="600" y="300" class="l-acc" text-anchor="middle">about 1 minute, day or night, with no person in the loop</text>
+          <text x="1180" y="300" class="l-acc" text-anchor="end">first reply</text>
+
+          <line x1="20" y1="330" x2="1180" y2="330" class="rule"/>
+
+          <!-- ROW 2: after the link -->
+          <text x="20" y="362" class="row">After the link: every call outcome moves the deal</text>
+
+          <!-- A: link sent -->
+          <rect x="20" y="434" width="200" height="72" rx="10" class="box"/>
+          <text x="120" y="462" class="t" text-anchor="middle">Link sent</text>
+          <text x="120" y="482" class="s" text-anchor="middle">stage: Qualified – Link Sent</text>
+          <path d="M70 434 C 70 392, 170 392, 170 432" class="ln" marker-end="url(#ah)"/>
+          <text x="120" y="388" class="l" text-anchor="middle">chase +4h · +1d · +3d</text>
+
+          <path d="M220 470 L 278 470" class="ln-good" marker-end="url(#ah-good)"/>
+          <text x="249" y="460" class="l" text-anchor="middle">books</text>
+
+          <!-- B: booked -->
+          <rect x="280" y="434" width="200" height="72" rx="10" class="box-good"/>
+          <text x="380" y="458" class="t" text-anchor="middle">Call booked</text>
+          <text x="380" y="476" class="s" text-anchor="middle">confirmation + reminders</text>
+          <text x="380" y="493" class="s" text-anchor="middle">24h and 2h before</text>
+          <path d="M330 434 C 330 392, 430 392, 430 432" class="ln-acc" marker-end="url(#ah-acc)"/>
+          <text x="380" y="388" class="l-acc" text-anchor="middle">rescheduled: old reminders killed</text>
+
+          <!-- D: showed -->
+          <path d="M480 452 C 540 452, 540 410, 598 410" class="ln-good" marker-end="url(#ah-good)"/>
+          <text x="540" y="420" class="l" text-anchor="middle">attends</text>
+          <rect x="600" y="380" width="230" height="60" rx="10" class="box-good"/>
+          <text x="715" y="405" class="t" text-anchor="middle">Showed</text>
+          <text x="715" y="424" class="s" text-anchor="middle">stage: Showed · automation ends</text>
+
+          <!-- E: no-show -->
+          <path d="M480 488 C 540 488, 540 530, 598 530" class="ln" marker-end="url(#ah)"/>
+          <text x="520" y="540" class="l" text-anchor="middle">no-show</text>
+          <rect x="600" y="500" width="230" height="60" rx="10" class="box"/><rect x="600" y="500" width="6" height="60" rx="3" class="f-bad"/>
+          <text x="715" y="525" class="t" text-anchor="middle">No-show</text>
+          <text x="715" y="544" class="s" text-anchor="middle">stage: No-Show – Re-book</text>
+
+          <!-- G: cancelled -->
+          <path d="M380 506 V 628 H 598" class="ln" marker-end="url(#ah)"/>
+          <text x="392" y="600" class="l">cancels</text>
+          <rect x="600" y="600" width="230" height="56" rx="10" class="box"/><rect x="600" y="600" width="6" height="56" rx="3" class="f-bad"/>
+          <text x="715" y="624" class="t" text-anchor="middle">Cancelled</text>
+          <text x="715" y="642" class="s" text-anchor="middle">stage: Call Cancelled</text>
+
+          <!-- F: re-book -->
+          <path d="M830 530 L 918 530" class="ln" marker-end="url(#ah)"/>
+          <text x="874" y="520" class="l" text-anchor="middle">starts</text>
+          <path d="M830 628 C 880 628, 880 560, 918 552" class="ln" marker-end="url(#ah)"/>
+          <text x="890" y="646" class="l" text-anchor="middle">re-book SMS</text>
+          <rect x="920" y="500" width="260" height="60" rx="10" class="box"/>
+          <text x="1050" y="525" class="t" text-anchor="middle">Re-book sequence</text>
+          <text x="1050" y="544" class="s" text-anchor="middle">SMS +15m · email +1d · SMS +3d</text>
+
+          <!-- back to booked -->
+          <path d="M1130 560 V 684 H 300 V 508" class="ln-good" marker-end="url(#ah-good)"/>
+          <text x="715" y="678" class="l" text-anchor="middle">books a new time · the re-book messages stop</text>
+        </svg>
+      </div>
+      <figcaption>Top row: everything between the form and the first message, about a minute end to end. Bottom row: what each calendar event does to the deal stage and to the messages queued for the lead.</figcaption>
+    </figure>
+    <ul class="say">
+      <li>"A lead comes in from one of three sources, already tagged so we always know where it came from."</li>
+      <li>"Claude scores it against our ideal client and writes one line on why. Qualified leads get the booking link in about a minute."</li>
+      <li>"Booked, rescheduled, cancelled and no-show each move the deal to its own stage and start the right messages."</li>
+    </ul>
+  </section>
+
+  <!-- ================= PART 2 ================= -->
+  <section class="part" id="real-work">
+    <div class="part-head"><span class="num">2</span><div><h2>The real work: four rules that keep it safe</h2></div></div>
+    <div class="grid2">
+
+      <!-- Duplicates -->
+      <figure>
+        <h3>The same event arrives 3 times</h3>
+        <div class="scroll">
+          <svg viewBox="0 0 540 240" role="img" aria-label="Three copies of the same Meta event reach the dedupe gate; one is processed and two stop, counted as hits equals 3.">
+            <defs>
+              <marker id="b-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+              <marker id="b-good" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-good"/></marker>
+              <marker id="b-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-bad"/></marker>
+            </defs>
+            <rect x="10" y="30" width="150" height="40" rx="8" class="box"/><text x="85" y="55" class="s" text-anchor="middle">Meta event lg_123</text>
+            <rect x="10" y="100" width="150" height="40" rx="8" class="box"/><text x="85" y="125" class="s" text-anchor="middle">Meta event lg_123</text>
+            <rect x="10" y="170" width="150" height="40" rx="8" class="box"/><text x="85" y="195" class="s" text-anchor="middle">Meta event lg_123</text>
+            <path d="M160 50 C 185 50, 185 108, 208 112" class="ln" marker-end="url(#b-ah)"/>
+            <path d="M160 120 L 208 120" class="ln" marker-end="url(#b-ah)"/>
+            <path d="M160 190 C 185 190, 185 132, 208 128" class="ln" marker-end="url(#b-ah)"/>
+            <rect x="210" y="85" width="130" height="70" rx="10" class="box-acc"/>
+            <text x="275" y="115" class="t" text-anchor="middle">Dedupe gate</text>
+            <text x="275" y="134" class="s" text-anchor="middle">key meta:lg_123</text>
+            <path d="M340 105 C 370 105, 370 62, 398 62" class="ln-good" marker-end="url(#b-good)"/>
+            <path d="M340 135 C 370 135, 370 178, 398 178" class="ln-bad" marker-end="url(#b-bad)"/>
+            <rect x="400" y="40" width="130" height="44" rx="8" class="box-good"/><text x="465" y="67" class="l-good" text-anchor="middle">1 processed</text>
+            <rect x="400" y="156" width="130" height="44" rx="8" class="box-bad"/><text x="465" y="176" class="l-bad" text-anchor="middle">2 stopped</text><text x="465" y="192" class="s" text-anchor="middle">hits = 3</text>
+          </svg>
+        </div>
+        <figcaption>A second lock sits on sending: each message is recorded before GHL sends it, so the same message can never go out twice.</figcaption>
+      </figure>
+
+      <!-- Reschedule -->
+      <figure>
+        <h3>A reschedule kills the old reminders</h3>
+        <div class="scroll">
+          <svg viewBox="0 0 540 240" role="img" aria-label="Reminders for the old call time, version 1, are crossed out and cancelled; new reminders for the new time, version 2, are queued.">
+            <defs>
+              <marker id="c-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-acc"/></marker>
+            </defs>
+            <line x1="20" y1="130" x2="520" y2="130" class="ln"/>
+            <text x="60" y="152" class="s" text-anchor="middle">Mon</text><text x="180" y="152" class="s" text-anchor="middle">Tue</text>
+            <text x="300" y="152" class="s" text-anchor="middle">Wed</text><text x="420" y="152" class="s" text-anchor="middle">Thu</text>
+            <!-- old call v1 -->
+            <circle cx="200" cy="130" r="9" class="box-bad"/>
+            <text x="200" y="40" class="l-bad" text-anchor="middle">old time · v1</text>
+            <line x1="200" y1="50" x2="200" y2="118" class="ln-bad"/>
+            <rect x="30" y="72" width="80" height="26" rx="6" class="box-bad"/><text x="70" y="90" class="s" text-anchor="middle">24h ✕</text>
+            <rect x="120" y="72" width="70" height="26" rx="6" class="box-bad"/><text x="155" y="90" class="s" text-anchor="middle">2h ✕</text>
+            <!-- move -->
+            <path d="M210 124 C 260 100, 300 100, 345 122" class="ln-acc" marker-end="url(#c-acc)"/>
+            <text x="280" y="92" class="l-acc" text-anchor="middle">rescheduled</text>
+            <!-- new call v2 -->
+            <circle cx="355" cy="130" r="9" class="f-good"/>
+            <line x1="355" y1="142" x2="355" y2="200" class="ln-good"/>
+            <text x="355" y="226" class="l-good" text-anchor="middle">new time · v2</text>
+            <rect x="200" y="170" width="80" height="26" rx="6" class="box-good"/><text x="240" y="188" class="s" text-anchor="middle">24h ✓</text>
+            <rect x="370" y="170" width="70" height="26" rx="6" class="box-good"/><text x="405" y="188" class="s" text-anchor="middle">2h ✓</text>
+          </svg>
+        </div>
+        <figcaption>Each reminder belongs to one version of the appointment. Just before sending, the scheduler checks the version again, so a reminder for the old time can never slip out.</figcaption>
+      </figure>
+
+      <!-- Human reply -->
+      <figure>
+        <h3>A human reply stops all automation</h3>
+        <div class="scroll">
+          <svg viewBox="0 0 540 240" role="img" aria-label="A message a team member sends is not in the send ledger, so automation turns off for the lead; the send gate then blocks every queued reminder, chase and re-book.">
+            <defs>
+              <marker id="d-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+              <marker id="d-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-bad"/></marker>
+            </defs>
+            <rect x="10" y="20" width="150" height="56" rx="8" class="box"/>
+            <text x="85" y="44" class="t" text-anchor="middle">Team member</text><text x="85" y="62" class="s" text-anchor="middle">replies in GHL</text>
+            <path d="M160 48 L 198 48" class="ln" marker-end="url(#d-ah)"/>
+            <rect x="200" y="20" width="160" height="56" rx="8" class="box-acc"/>
+            <text x="280" y="44" class="t" text-anchor="middle">Sent by us?</text><text x="280" y="62" class="s" text-anchor="middle">check the send ledger</text>
+            <path d="M360 48 L 398 48" class="ln-bad" marker-end="url(#d-bad)"/>
+            <text x="379" y="40" class="l-bad" text-anchor="middle">no</text>
+            <rect x="400" y="20" width="130" height="56" rx="8" class="box-bad"/>
+            <text x="465" y="44" class="t" text-anchor="middle">Automation</text><text x="465" y="62" class="l-bad" text-anchor="middle">OFF for this lead</text>
+            <!-- queue -->
+            <rect x="10" y="150" width="90" height="34" rx="6" class="box"/><text x="55" y="172" class="s" text-anchor="middle">reminder</text>
+            <rect x="110" y="150" width="80" height="34" rx="6" class="box"/><text x="150" y="172" class="s" text-anchor="middle">chase</text>
+            <rect x="200" y="150" width="90" height="34" rx="6" class="box"/><text x="245" y="172" class="s" text-anchor="middle">re-book</text>
+            <path d="M290 167 L 348 167" class="ln" marker-end="url(#d-ah)"/>
+            <rect x="350" y="140" width="110" height="54" rx="8" class="box-acc"/>
+            <text x="405" y="164" class="t" text-anchor="middle">Send gate</text><text x="405" y="182" class="s" text-anchor="middle">every message</text>
+            <path d="M465 76 V 138" class="ln-bad" marker-end="url(#d-bad)"/>
+            <text x="472" y="112" class="l-bad">checked</text>
+            <text x="500" y="176" class="l-bad" text-anchor="middle">✕ blocked</text>
+            <text x="150" y="216" class="s" text-anchor="middle">queued before the reply</text>
+          </svg>
+        </div>
+        <figcaption>The contact gets the human-takeover tag, the queue is cancelled and your team is told. A STOP reply from the lead turns automation off the same way.</figcaption>
+      </figure>
+
+      <!-- Failures -->
+      <figure>
+        <h3>Every failure alerts you</h3>
+        <div class="scroll">
+          <svg viewBox="0 0 540 240" role="img" aria-label="Crashes go to the error handler and quiet problems are found by the watchdog every 5 minutes; both raise one alert by Slack and email. If n8n itself is down, its heartbeat stops and Healthchecks emails you.">
+            <defs>
+              <marker id="e-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+              <marker id="e-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-bad"/></marker>
+            </defs>
+            <rect x="10" y="20" width="160" height="44" rx="8" class="box"/><text x="90" y="40" class="t" text-anchor="middle">Workflow crashes</text><text x="90" y="56" class="s" text-anchor="middle">any node, any workflow</text>
+            <rect x="10" y="90" width="160" height="44" rx="8" class="box"/><text x="90" y="110" class="t" text-anchor="middle">Quiet problem</text><text x="90" y="126" class="s" text-anchor="middle">no reply after 5 min</text>
+            <rect x="10" y="170" width="160" height="44" rx="8" class="box"/><text x="90" y="190" class="t" text-anchor="middle">n8n is down</text><text x="90" y="206" class="s" text-anchor="middle">nothing runs at all</text>
+            <path d="M170 42 L 208 42" class="ln" marker-end="url(#e-ah)"/>
+            <path d="M170 112 L 208 112" class="ln" marker-end="url(#e-ah)"/>
+            <path d="M170 192 L 208 192" class="ln-bad" marker-end="url(#e-bad)"/>
+            <rect x="210" y="20" width="130" height="44" rx="8" class="box"/><text x="275" y="47" class="s" text-anchor="middle">Error handler</text>
+            <rect x="210" y="90" width="130" height="44" rx="8" class="box"/><text x="275" y="110" class="s" text-anchor="middle">Watchdog</text><text x="275" y="126" class="s" text-anchor="middle">every 5 min</text>
+            <rect x="210" y="170" width="130" height="44" rx="8" class="box"/><text x="275" y="190" class="s" text-anchor="middle">Heartbeat stops</text><text x="275" y="206" class="s" text-anchor="middle">Healthchecks.io</text>
+            <path d="M340 42 C 365 42, 365 70, 388 74" class="ln" marker-end="url(#e-ah)"/>
+            <path d="M340 112 C 365 112, 365 92, 388 88" class="ln" marker-end="url(#e-ah)"/>
+            <path d="M340 192 L 388 192" class="ln" marker-end="url(#e-ah)"/>
+            <rect x="390" y="50" width="140" height="62" rx="10" class="box-acc"/>
+            <text x="460" y="76" class="t" text-anchor="middle">Slack + email</text><text x="460" y="96" class="s" text-anchor="middle">once per problem</text>
+            <rect x="390" y="170" width="140" height="44" rx="10" class="box-acc"/>
+            <text x="460" y="197" class="t" text-anchor="middle">Email to you</text>
+          </svg>
+        </div>
+        <figcaption>Crashes, refused messages and silent gaps all reach you, with a link to the failed run. Alert targets live in n8n itself, so alerts still go out when the database is down.</figcaption>
+      </figure>
+    </div>
+    <ul class="say">
+      <li>"Watch: I send the same lead three times. One run goes through, two stop, and the lead gets one message."</li>
+      <li>"I move the call. The old reminders are cancelled and new ones are queued for the new time."</li>
+      <li>"I reply by hand. From now on the automation stays out of this conversation."</li>
+      <li>"And nothing fails quietly. Every problem lands in Slack and my inbox, once."</li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

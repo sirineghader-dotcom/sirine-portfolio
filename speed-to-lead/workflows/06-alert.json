@@ -1,0 +1,231 @@
+{
+  "name": "STL 06 \u00b7 Alert (sub-workflow)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f0e457d0-2e2e-5464-b518-be001f0d24f1",
+      "name": "When called by another workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kept here, not in the database, so alerts still go out when Postgres is down.\nconst SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/REPLACE_ME';\nconst N8N_BASE_URL = 'https://your-n8n.example.com';\nconst a = $json;\nconst icon = { info: ':information_source:', warning: ':warning:', error: ':x:', critical: ':rotating_light:' }[a.severity] || ':x:';\nconst execUrl = a.execution_url || (a.execution_id ? `${N8N_BASE_URL}/workflow/${$workflow.id}/executions/${a.execution_id}` : '');\nreturn { json: { ...a, severity: a.severity || 'error', slack_url: SLACK_WEBHOOK_URL, execution_url: execUrl,\n  text: `${icon} *${(a.severity || 'error').toUpperCase()}* \u00b7 ${a.workflow || 'n8n'}${a.node ? ' \u2192 ' + a.node : ''}\\n${a.message}${execUrl ? `\\n<${execUrl}|Open execution>` : ''}` } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "be8fce63-eba2-52e3-8e77-84d2928eee86",
+      "name": "Alert targets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO alerts (alert_key, severity, workflow, node, message, execution_url, context)\nVALUES ($1, CASE WHEN $2::text = 'info' THEN 'warning' ELSE $2::text END, $3, $4, $5, $6, $7::jsonb)\nON CONFLICT (alert_key) DO NOTHING\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $json.alert_key || null, $json.severity, $json.workflow, $json.node, $json.message, $json.execution_url, JSON.stringify($json.context || {}) ] }}"
+        }
+      },
+      "id": "6346a5a3-6c39-579d-b710-4a701eb443c0",
+      "name": "Record alert (dedupe)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        440,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "b9ec4041-0458-58b2-925b-726ec401c7cf",
+              "leftValue": "={{ !!$json.id || !!$json.error || !$('Alert targets').item.json.alert_key }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4370c69d-d576-5a31-bf6a-9b26caa2f5df",
+      "name": "New alert (or DB down)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Alert targets').item.json.slack_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $('Alert targets').item.json.text }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "ebc5103d-d9bc-5f13-a311-2211f2d33163",
+      "name": "Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@example.com",
+        "toEmail": "owner@example.com",
+        "subject": "={{ '[' + $('Alert targets').item.json.severity.toUpperCase() + '] Speed-to-Lead: ' + $('Alert targets').item.json.message.slice(0, 80) }}",
+        "emailFormat": "text",
+        "text": "={{ $('Alert targets').item.json.text.replace(/[*]/g, '') }}",
+        "options": {}
+      },
+      "id": "9e5f8fa1-ddde-594f-ae6c-94a9c097470f",
+      "name": "Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "stl-smtp",
+          "name": "Alerts SMTP"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { alerted: true } }];"
+      },
+      "id": "dcb51b72-2c7d-5bf1-9608-1e7d93677b8b",
+      "name": "Done",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "When called by another workflow": {
+      "main": [
+        [
+          {
+            "node": "Alert targets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert targets": {
+      "main": [
+        [
+          {
+            "node": "Record alert (dedupe)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record alert (dedupe)": {
+      "main": [
+        [
+          {
+            "node": "New alert (or DB down)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New alert (or DB down)?": {
+      "main": [
+        [
+          {
+            "node": "Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack": {
+      "main": [
+        [
+          {
+            "node": "Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "__WF_ERROR_HANDLER__"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "name": "STL 07 \u00b7 Error handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "483c0e7d-8c87-5663-9240-34c20b28c2a2",
+      "name": "On any workflow error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $json;\nreturn { json: {\n  severity: 'critical',\n  workflow: e.workflow?.name, node: e.execution?.lastNodeExecuted,\n  message: `Execution crashed: ${e.execution?.error?.message || 'unknown error'}`,\n  execution_url: e.execution?.url || '',\n  alert_key: 'exec:' + (e.execution?.id || Date.now()),\n  context: { workflow_id: e.workflow?.id, execution_id: e.execution?.id, mode: e.execution?.mode },\n}};",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "1eabb2c6-b47c-55f3-bd37-afa76639f34c",
+      "name": "Shape alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_ALERT__",
+        "options": {}
+      },
+      "id": "c9cb1407-cc71-5acd-8b6b-375ca6700493",
+      "name": "Send alert",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        440,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "On any workflow error": {
+      "main": [
+        [
+          {
+            "node": "Shape alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape alert": {
+      "main": [
+        [
+          {
+            "node": "Send alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}
