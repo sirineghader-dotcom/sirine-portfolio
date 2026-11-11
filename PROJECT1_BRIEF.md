@@ -75,7 +75,7 @@ jargon, logical flow: volume → pipeline → conversion → revenue.
 - **Duplicates:** 12 contacts re-entered with the same name and company and a `.2` email
   (e.g. `name.123.2@`), usually under a different source; one is tagged `dq - duplicate`.
   Removed; the first entry (which holds the deal) is kept.
-- **Deal values:** typical deal $7,250. 7 deals at $145,000 (2 of them won) and 9 at $0
+- **Deal values:** typical deal $7,250. 6 deals at $145,000 (2 of them won) and 9 at $0
   (1 won). Won ones are kept as won deals but left out of revenue.
 - **Status vs stage:** 2 deals sit in Disqualified but are still "open"; counted by stage.
 - No missing sources, spelling variants or impossible dates in the current data. The checks
