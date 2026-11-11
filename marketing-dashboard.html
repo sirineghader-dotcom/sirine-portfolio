@@ -152,8 +152,8 @@
     .f-row { margin-top: 8px; }
     .f-label { display: flex; justify-content: space-between; gap: 8px; font-size: 0.8rem; color: var(--ink-2); }
     .f-label b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
-    .f-track { height: 10px; background: var(--track); border-radius: 0 4px 4px 0; margin-top: 3px; }
-    .f-bar { height: 100%; background: var(--series); border-radius: 0 4px 4px 0; min-width: 2px; }
+    .f-track { height: 12px; margin-top: 3px; display: flex; justify-content: center; }
+    .f-bar { height: 100%; background: var(--series); border-radius: 4px; min-width: 2px; }
     .f-rate { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
     /* ===== Tables ===== */
@@ -238,9 +238,12 @@
     <section class="card" aria-labelledby="h-funnel">
       <p class="step">Step 3 · Conversion</p>
       <h2 id="h-funnel">How far each source's leads get</h2>
-      <p class="hint">Each funnel starts with that source's leads. The percentage under each bar is how many made it from the step before. Sorted by the share of leads that became a sale.</p>
+      <p class="hint">Each funnel starts with that source's leads and narrows at every step of the sales pipeline. The percentage under each bar is how many made it from the step before. Sorted by the share of leads that became a sale.</p>
       <div class="funnels" id="funnels"></div>
-      <details><summary>View data table</summary><div class="table-scroll"><table id="funnel-table"></table></div></details>
+      <details><summary>View data table</summary><div class="table-scroll"><table id="funnel-table"></table></div>
+        <p class="footnote">How the 8 pipeline stages map to the steps: <b>Entered the pipeline</b> = any stage.
+          <b>Qualified</b> = any stage except Disqualified. <b>Booked a call</b> = Booked call, No Show, Cancelled,
+          Follow Up, Lost or Closed. <b>Attended the call</b> = Follow Up, Lost or Closed. <b>Won</b> = Closed.</p></details>
     </section>
 
     <!-- 5. REVENUE -->
@@ -265,7 +268,7 @@
     </section>
 
     <p class="footnote" id="method">
-      Data comes from the agency's GoHighLevel account and refreshes automatically every morning.
+      Data comes from the agency's GoHighLevel account, as of the date at the top of the page.
       A lead's source is the channel recorded when they first came in. There is no ad-spend data,
       so the advice is based on leads, conversion and closed revenue.
     </p>
@@ -361,6 +364,7 @@
       el("caveat").textContent =
         `Worth knowing: each source has only ${minWon}–${maxWon} closed sales so far, so one big deal can move a source up or down. ` +
         `Shift budget in steps (for example 10–20% a month) and check back here. ` +
+        `Referral and Website Form aren't ads you buy: for those, “spend” means effort, such as referral rewards or improving the form page. ` +
         `“Per lead” = closed revenue ÷ leads from that source.`;
     }
 
@@ -495,8 +499,7 @@
       // Table in pipeline order, with a total that must match the stage counts.
       const order = data.stageOrder;
       fillTable("pipeline-table", ["Source", ...order, "Total deals"],
-        list.map((r) => [r.source, ...order.map((st) => r.stages[st]), r.deals]),
-        ["All sources", ...order.map((st) => rows.reduce((t, r) => t + r.stages[st], 0)), rows.reduce((t, r) => t + r.deals, 0)]);
+        list.map((r) => [r.source, ...order.map((st) => r.stages[st]), r.deals]));
     }
 
     function renderFunnels() {
@@ -604,7 +607,7 @@
         data = json;
         rows = data.sources.map((r) => ({ ...r, perLead: r.leads ? r.revenue / r.leads : 0 }));
         const when = new Date(data.generatedAt);
-        el("updated").textContent = `${data.cleaning.keptContacts} leads from ${rows.length} sources · updated ` +
+        el("updated").textContent = `Comparing ${rows.length} lead sources side by side · data from ` +
           when.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
         renderAll();
       })
