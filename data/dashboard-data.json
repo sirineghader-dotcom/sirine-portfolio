@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-09T09:27:12Z",
+  "generatedAt": "2026-11-11T12:30:45Z",
   "pipeline": "Sales Pipeline",
   "stageOrder": [
     "Qualified Opt In",
@@ -257,15 +257,15 @@
   ],
   "typicalDeal": 7250,
   "cleaning": {
-    "rawContacts": 369,
-    "rawDeals": 247,
+    "rawContacts": 414,
+    "rawDeals": 278,
     "keptContacts": 294,
     "keptDeals": 204,
     "removed": [
       {
         "rule": "Other businesses' records",
         "kind": "contacts",
-        "count": 48,
+        "count": 93,
         "reason": "The GoHighLevel account is shared with other businesses. Only leads tagged \u201cdash-project\u201d belong to this agency."
       },
       {
@@ -289,7 +289,7 @@
       {
         "rule": "Other businesses' deals",
         "kind": "deals",
-        "count": 43,
+        "count": 74,
         "reason": "Deals belonging to other businesses in the shared account."
       },
       {

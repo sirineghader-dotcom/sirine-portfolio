@@ -59,7 +59,8 @@ jargon, logical flow: volume → pipeline → conversion → revenue.
       environment. Location ID: `yLiKZKvk2CeI2ckIqd1L`.
 - [x] Agency identifier: contacts tagged **`dash-project`**, deals in the 8-stage
       **"Sales Pipeline"**.
-- [ ] Add repo secrets `GHL_API_KEY` / `GHL_LOCATION_ID` so the daily GitHub Action can run.
+- [x] Repo secrets `GHL_API_KEY` / `GHL_LOCATION_ID` added. GitHub still doesn't register the
+      refresh workflow on this account, so the data is refreshed manually (last: 2026-11-11).
 - [ ] Merge to `main`, then turn on GitHub Pages (Settings → Pages → Deploy from branch → `main`
       / root). Live link: `https://sirineghader-dotcom.github.io/sirine-portfolio/marketing-dashboard.html`.
 

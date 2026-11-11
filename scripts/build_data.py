@@ -26,6 +26,7 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "data", "dashboard-data.json
 # Other students share the sandbox and use their own tags/pipelines.
 AGENCY_TAG = "dash-project"
 PIPELINE_NAME = "Sales Pipeline"
+PIPELINE_ID = "a5UYvGBOnvtiBm0W6H8D"  # by id: other students could create a pipeline with the same name
 INTERNAL_TAGS = {"internal"}
 
 # The 8 pipeline stages, in the order a deal moves through them.
@@ -106,7 +107,7 @@ def parse_date(value):
 
 
 def build(pipelines, opps, contacts, now):
-    pipeline = next(p for p in pipelines if p["name"] == PIPELINE_NAME)
+    pipeline = next(p for p in pipelines if p["id"] == PIPELINE_ID)
     stage_name = {s["id"]: s["name"] for s in pipeline["stages"]}
     assert sorted(stage_name.values()) == sorted(STAGE_ORDER), "pipeline stages changed in GHL"
 
