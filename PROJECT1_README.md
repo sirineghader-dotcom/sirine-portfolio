@@ -14,21 +14,19 @@ Built with the GoHighLevel API and Claude Code.
 
 The page reads top to bottom in the order the brief asks for: **volume → pipeline → conversion → revenue**.
 
-| # | Section | Chart | What it answers |
+| Step | Section | Chart | What it answers |
 |---|---------|-------|-----------------|
-| 1 | The short answer | Three lists: Spend more / Keep steady / Spend less | Where to put next month's budget, in plain English |
-| 2 | Volume | Bar chart, sorted | How many real, unique leads each source brought in |
-| 3 | Pipeline | Stacked bar (count or share) | Where each source's deals sit across the 8 pipeline stages |
-| 4 | Conversion | One funnel per source | How many leads make it from each step to the next |
-| 5 | Revenue | Bar chart, sorted highest first | Closed revenue from each source |
-| 6 | Behind the numbers | Table | How many records were removed or adjusted, and why |
+| 1 | Volume | Bar chart, sorted | How many real, unique leads each source brought in |
+| 2 | Pipeline | Stacked bar (count or share) | Where each source's deals sit across the 8 pipeline stages |
+| 3 | Conversion | One funnel per source | How many leads make it from each step to the next |
+| 4 | Revenue | Bar chart, sorted highest first | Closed revenue from each source |
 
 Every chart has a **View data table** with the exact numbers. The page works on phones and in
 light or dark mode.
 
-### The budget recommendation
+### What the numbers say about budget
 
-There is no ad spend data, so sources are ranked by **closed revenue per lead**. This combines
+There is no ad spend data, so sources are ranked here by **closed revenue per lead**. This combines
 volume, conversion and revenue: it is what one more lead from that source has been worth so far.
 
 | Source | Leads | Deals | Won | Closed revenue | Revenue per lead | Advice |
@@ -43,7 +41,7 @@ volume, conversion and revenue: it is what one more lead from that source has be
 | Website Form | 29 | 23 | 1 | $11,000 | $379 | Spend less |
 | Facebook Ad | 37 | 24 | 3 | $7,000 | $189 | Spend less |
 
-The dashboard also tells the owner two things:
+Two things to keep in mind:
 - Each source has only 1–5 closed sales, so budget should shift in steps (about 10–20% a month).
 - Referral and Website Form aren't ads you buy. For those two, "spend" means effort, such as
   referral rewards or improving the form page.
@@ -66,7 +64,7 @@ with the same name can't be picked up by mistake.
 
 ## Data cleaning
 
-Every rule runs on each rebuild, and the dashboard shows the owner the same table.
+Every rule runs on each rebuild, and the script prints each count. This section is the owner's record of what was removed and why; the dashboard itself shows only the cleaned numbers.
 
 ### Removed from every chart
 
