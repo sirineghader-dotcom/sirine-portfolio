@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lead Source Dashboard</title>
-  <meta name="description" content="Which lead sources bring in leads, booked calls and closed revenue — updated daily from GoHighLevel.">
+  <meta name="description" content="Which lead sources bring in leads, booked calls and closed revenue — from GoHighLevel.">
 
   <!-- Chart.js: a free library that draws charts from lists of numbers -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -119,20 +119,6 @@
     .hint { color: var(--ink-2); font-size: 0.9rem; margin: 2px 0 14px; max-width: 70ch; }
     .chart-box { position: relative; height: 360px; }
 
-    /* ===== Headline: the budget answer ===== */
-    .answer { font-size: 1.15rem; line-height: 1.55; max-width: 70ch; margin: 6px 0 16px; }
-    .answer strong { font-weight: 650; }
-    .groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-    .group { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--page); }
-    .group h3 { font-size: 0.95rem; font-weight: 650; margin-bottom: 8px; }
-    .group h3 .icon { display: inline-block; width: 1.2em; }
-    .group.up h3 { color: var(--good); }
-    .group.down h3 { color: var(--bad); }
-    .group ul { list-style: none; }
-    .group li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-top: 1px solid var(--grid); font-size: 0.92rem; }
-    .group li:first-child { border-top: 0; }
-    .group li span:last-child { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .caveat { color: var(--ink-2); font-size: 0.85rem; margin-top: 12px; max-width: 80ch; }
 
     /* ===== Legend for the stacked chart ===== */
     .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; color: var(--ink-2); margin-bottom: 10px; }
@@ -166,14 +152,6 @@
     th { color: var(--ink); font-weight: 600; }
     tfoot td { font-weight: 600; color: var(--ink); }
 
-    .removed td { white-space: normal; vertical-align: top; }
-    .removed td:first-child { width: 15em; }
-    .removed td:nth-child(2) { font-weight: 600; color: var(--ink); width: 11em; white-space: nowrap; }
-    .removed th:last-child { text-align: left; }
-    .removed td:last-child { text-align: left; color: var(--ink-2); }
-    .removed tr.none td { color: var(--muted); font-weight: 400; }
-    .removed h3 { font-size: 0.95rem; font-weight: 650; margin: 18px 0 4px; }
-    .flow { font-size: 0.95rem; margin-bottom: 4px; }
 
     .footnote { margin-top: 8px; color: var(--muted); font-size: 0.8rem; }
     .error { color: var(--bad); }
@@ -182,14 +160,9 @@
       .funnels { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 640px) {
-      .groups, .funnels { grid-template-columns: 1fr; }
+      .funnels { grid-template-columns: 1fr; }
       .card { padding: 16px; }
       .chart-box { height: 340px; }
-      .answer { font-size: 1.05rem; }
-      /* Cleaning tables: one stacked block per rule instead of three squeezed columns */
-      .removed thead { display: none; }
-      .removed tr { display: block; padding: 8px 0; border-bottom: 1px solid var(--grid); }
-      .removed td { display: block; width: auto !important; border: 0; padding: 1px 0; text-align: left; }
     }
   </style>
 </head>
@@ -202,25 +175,16 @@
       <p class="subtitle" id="updated">Loading the latest numbers…</p>
     </header>
 
-    <!-- 1. THE ANSWER -->
-    <section class="card" aria-labelledby="h-answer">
-      <p class="step">The short answer</p>
-      <h2 id="h-answer">Where to put next month's budget</h2>
-      <p class="answer" id="answer"></p>
-      <div class="groups" id="groups"></div>
-      <p class="caveat" id="caveat"></p>
-    </section>
-
-    <!-- 2. VOLUME -->
+    <!-- 1. VOLUME -->
     <section class="card" aria-labelledby="h-volume">
       <p class="step">Step 1 · Volume</p>
       <h2 id="h-volume">How many leads each source brought in</h2>
-      <p class="hint">Real, unique leads only. Duplicates, internal tests and other businesses' records are removed (see the bottom of the page).</p>
+      <p class="hint">Real, unique leads only. Duplicates, internal test leads and other businesses' records are removed.</p>
       <div class="chart-box"><canvas id="volume-chart" role="img" aria-label="Bar chart of leads by source"></canvas></div>
       <details><summary>View data table</summary><div class="table-scroll"><table id="volume-table"></table></div></details>
     </section>
 
-    <!-- 3. PIPELINE -->
+    <!-- 2. PIPELINE -->
     <section class="card" aria-labelledby="h-pipeline">
       <p class="step">Step 2 · Pipeline</p>
       <h2 id="h-pipeline">Where each source's deals are sitting right now</h2>
@@ -234,7 +198,7 @@
       <details><summary>View data table</summary><div class="table-scroll"><table id="pipeline-table"></table></div></details>
     </section>
 
-    <!-- 4. CONVERSION -->
+    <!-- 3. CONVERSION -->
     <section class="card" aria-labelledby="h-funnel">
       <p class="step">Step 3 · Conversion</p>
       <h2 id="h-funnel">How far each source's leads get</h2>
@@ -246,7 +210,7 @@
           Follow Up, Lost or Closed. <b>Attended the call</b> = Follow Up, Lost or Closed. <b>Won</b> = Closed.</p></details>
     </section>
 
-    <!-- 5. REVENUE -->
+    <!-- 4. REVENUE -->
     <section class="card" aria-labelledby="h-revenue">
       <p class="step">Step 4 · Revenue</p>
       <h2 id="h-revenue">Closed revenue from each source</h2>
@@ -255,22 +219,10 @@
       <details><summary>View data table</summary><div class="table-scroll"><table id="revenue-table"></table></div></details>
     </section>
 
-    <!-- 6. DATA CLEANING -->
-    <section class="card removed" aria-labelledby="h-removed">
-      <p class="step">Behind the numbers</p>
-      <h2 id="h-removed">Records removed, and why</h2>
-      <p class="flow" id="flow"></p>
-      <h3>Removed from every chart</h3>
-      <div class="table-scroll"><table id="removed-table"></table></div>
-      <h3>Kept, but handled with care</h3>
-      <div class="table-scroll"><table id="adjusted-table"></table></div>
-      <p class="footnote">“Checked — none found” rows are checks that run on every refresh; they're listed so you can see they were looked for.</p>
-    </section>
-
     <p class="footnote" id="method">
       Data comes from the agency's GoHighLevel account, as of the date at the top of the page.
       A lead's source is the channel recorded when they first came in. There is no ad-spend data,
-      so the advice is based on leads, conversion and closed revenue.
+      so sources are compared on leads, conversion and closed revenue.
     </p>
   </div>
 
@@ -311,65 +263,7 @@
     const charts = {};
 
     /* =========================================================
-       2. THE ANSWER
-       Ranks sources by closed revenue per lead: what one more lead
-       from that source has been worth so far.
-       ========================================================= */
-    function renderAnswer() {
-      const ranked = [...rows].sort((a, b) => b.perLead - a.perLead);
-      const third = Math.ceil(ranked.length / 3);
-      const top = ranked.slice(0, third);
-      const bottom = ranked.slice(ranked.length - third);
-      const middle = ranked.slice(third, ranked.length - third);
-      const names = (list) => list.map((r) => r.source).join(", ").replace(/, ([^,]*)$/, " and $1");
-      const worst = bottom[bottom.length - 1];
-      const busiest = [...rows].sort((a, b) => b.leads - a.leads)[0];
-
-      el("answer").innerHTML = "";
-      const p = el("answer");
-      p.append("Move budget toward ");
-      const s1 = document.createElement("strong"); s1.textContent = names(top); p.append(s1);
-      p.append(`. Each lead from these has turned into about ${money(top[top.length - 1].perLead)}–${money(top[0].perLead)} in closed sales. `);
-      p.append("Pull back from ");
-      const s2 = document.createElement("strong"); s2.textContent = names(bottom); p.append(s2);
-      p.append(`: ${worst.source} leads have returned only ${money(worst.perLead)} each.`);
-      if (busiest !== top[0] && bottom.includes(busiest)) {
-        p.append(` ${busiest.source} sends the most leads (${busiest.leads}), but few of them buy.`);
-      }
-
-      const group = (cls, icon, title, list) => {
-        const div = document.createElement("div");
-        div.className = "group " + cls;
-        const h = document.createElement("h3");
-        const i = document.createElement("span"); i.className = "icon"; i.setAttribute("aria-hidden", "true"); i.textContent = icon;
-        h.append(i, title);
-        const ul = document.createElement("ul");
-        list.forEach((r) => {
-          const li = document.createElement("li");
-          const a = document.createElement("span"); a.textContent = r.source;
-          const b = document.createElement("span"); b.textContent = money(r.perLead) + " per lead";
-          li.append(a, b); ul.append(li);
-        });
-        div.append(h, ul);
-        return div;
-      };
-      el("groups").replaceChildren(
-        group("up", "▲", "Spend more", top),
-        group("hold", "■", "Keep steady", middle),
-        group("down", "▼", "Spend less", bottom),
-      );
-
-      const minWon = Math.min(...rows.map((r) => r.won));
-      const maxWon = Math.max(...rows.map((r) => r.won));
-      el("caveat").textContent =
-        `Worth knowing: each source has only ${minWon}–${maxWon} closed sales so far, so one big deal can move a source up or down. ` +
-        `Shift budget in steps (for example 10–20% a month) and check back here. ` +
-        `Referral and Website Form aren't ads you buy: for those, “spend” means effort, such as referral rewards or improving the form page. ` +
-        `“Per lead” = closed revenue ÷ leads from that source.`;
-    }
-
-    /* =========================================================
-       3. CHARTS
+       2. CHARTS
        ========================================================= */
     function baseOptions() {
       const tick = { color: token("--ink-2"), font: { size: 12 } };
@@ -558,34 +452,13 @@
     }
 
     /* =========================================================
-       4. DATA CLEANING TABLES
-       ========================================================= */
-    function renderCleaning() {
-      const c = data.cleaning;
-      el("flow").textContent =
-        `Started with ${c.rawContacts} contacts and ${c.rawDeals} deals in the account. ` +
-        `After cleaning: ${c.keptContacts} real leads and ${c.keptDeals} deals, all shown above.`;
-      const kind = { contacts: "contacts", deals: "deals", revenue: "deals", info: "deals" };
-      const fill = (id, list) => {
-        fillTable(id, ["What", "How many", "Why"], list.map((r) => [
-          r.rule, r.count ? `${r.count} ${r.count === 1 ? kind[r.kind].slice(0, -1) : kind[r.kind]}` : "Checked — none found", r.reason,
-        ]));
-        el(id).querySelectorAll("tbody tr").forEach((tr, i) => { if (!list[i].count) tr.className = "none"; });
-      };
-      fill("removed-table", c.removed);
-      fill("adjusted-table", c.adjusted);
-    }
-
-    /* =========================================================
-       5. PUT IT ALL TOGETHER
+       3. PUT IT ALL TOGETHER
        ========================================================= */
     function renderAll() {
-      renderAnswer();
       renderVolume();
       renderPipeline();
       renderFunnels();
       renderRevenue();
-      renderCleaning();
     }
 
     document.querySelectorAll(".toggle button").forEach((btn) => {
