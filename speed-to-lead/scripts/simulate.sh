@@ -2,6 +2,7 @@
 # Sends test events to the n8n webhooks: the script for the Loom recording.
 #
 #   export N8N=https://your-n8n.example.com/webhook   # production webhook base URL
+#   export LEAD_EMAIL=you@gmail.com                   # optional: a real inbox for the test leads
 #   ./simulate.sh meta            # a qualified Meta lead
 #   ./simulate.sh website         # a website lead that needs review
 #   ./simulate.sh referral        # a referral that is not qualified (B2C)
@@ -15,6 +16,10 @@
 set -euo pipefail
 : "${N8N:?set N8N to your n8n webhook base, e.g. https://x.app.n8n.cloud/webhook}"
 RUN=${RUN:-$(date +%s)}
+# Set LEAD_EMAIL to a real inbox to see the emails arrive (e.g. you@gmail.com).
+# Each test lead gets its own "+tag" address, so GHL treats it as a new contact.
+LEAD_EMAIL=${LEAD_EMAIL:-lead@example.com}
+email_for() { echo "${LEAD_EMAIL%@*}+$1-$RUN@${LEAD_EMAIL#*@}"; }
 
 post() { curl -sS -X POST "$N8N/$1" -H 'Content-Type: application/json' -d "$2"; echo; }
 
@@ -25,7 +30,7 @@ meta_lead() {  # Meta Lead Ads webhook shape, with field_data included
   "created_time":$(date +%s),
   "field_data":[
     {"name":"full_name","values":["Dana Lee"]},
-    {"name":"email","values":["dana.lee+$RUN@example.com"]},
+    {"name":"email","values":["$(email_for dana)"]},
     {"name":"phone_number","values":["+15555550101"]},
     {"name":"company_name","values":["Brightpath Software"]},
     {"name":"job_title","values":["Founder & CEO"]},
@@ -46,13 +51,13 @@ case "${1:-}" in
     for _ in 1 2 3; do post stl/lead/meta "$body" & done; wait ;;
   website)
     post stl/lead/website "{\"submission_id\":\"web_$RUN\",\"first_name\":\"Marco\",\"last_name\":\"Ruiz\",
-      \"email\":\"marco+$RUN@example.com\",\"phone\":\"5555550102\",\"company_name\":\"Ruiz Logistics\",
+      \"email\":\"$(email_for marco)\",\"phone\":\"5555550102\",\"company_name\":\"Ruiz Logistics\",
       \"job_title\":\"Operations Manager\",\"company_size\":\"600+\",\"monthly_budget\":\"\$3,000 - \$5,000\",
       \"timeline\":\"Next quarter\",\"biggest_challenge\":\"Exploring options for the marketing team\",
       \"utm_campaign\":\"google-b2b-lead-gen\"}" ;;
   referral)
     post stl/lead/referral "{\"referral_id\":\"ref_$RUN\",\"first_name\":\"Priya\",\"last_name\":\"Shah\",
-      \"email\":\"priya+$RUN@example.com\",\"phone\":\"5555550103\",\"company_name\":\"Glow Nail Studio\",
+      \"email\":\"$(email_for priya)\",\"phone\":\"5555550103\",\"company_name\":\"Glow Nail Studio\",
       \"job_title\":\"Owner\",\"company_size\":\"1-5\",\"monthly_budget\":\"Under \$1,000\",\"timeline\":\"ASAP\",
       \"notes\":\"Wants more walk-in customers for her salon\",\"referred_by\":\"Jordan Kim (client)\"}" ;;
   broken)
