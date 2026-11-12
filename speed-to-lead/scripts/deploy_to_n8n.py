@@ -8,7 +8,7 @@ and wires the sub-workflow / error-workflow IDs together.
     python3 speed-to-lead/scripts/deploy_to_n8n.py [--activate]
 
 Credentials are not created here: after the first deploy, open each workflow
-once and select your "STL Postgres", "GHL Private Integration", "Anthropic API"
+once and select your "STL Postgres", "GHL Private Integration", "Gemini API"
 and "Alerts SMTP" credentials, then run again with --activate.
 """
 import json

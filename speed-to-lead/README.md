@@ -1,11 +1,11 @@
 # Speed-to-Lead Revenue Engine
 
-*n8n + GoHighLevel + Claude*
+*n8n + GoHighLevel + Gemini · built with Claude Code*
 
 A B2B agency (Northwind Growth, the example client) gets leads from Meta ads, its
 website and referrals. Before this system, replies took hours, about half of booked calls
 no-showed, and nobody knew what a booked call cost. With it, every lead gets a reply in about
-a minute. Claude qualifies each lead, qualified leads get a booking link, and the system
+a minute. Gemini qualifies each lead, qualified leads get a booking link, and the system
 reminds and chases them. The owner gets a one-screen scorecard showing which source brings
 the cheapest booked calls.
 
@@ -32,7 +32,7 @@ flowchart LR
   end
   M & W & R --> I[01 Lead intake<br/>normalize · dedupe]
   I --> G[(GoHighLevel<br/>contact + deal)]
-  I --> C{Claude<br/>qualify}
+  I --> C{Gemini<br/>qualify}
   C -->|Qualified| Q[Booking link<br/>SMS + email]
   C -->|Needs review| N[Holding reply<br/>+ team ping]
   C -->|Not qualified| X[Polite email]
@@ -56,7 +56,7 @@ system's memory, and that is what makes the hard guarantees hold.
 
 | Workflow | What it does |
 |---|---|
-| `01-lead-intake` | Three webhooks (Meta, website, referral), each tagged with its source. Normalizes the data, dedupes, creates the GHL contact and deal, asks Claude to qualify, moves the deal and sends the first reply. Also schedules the booking chase. |
+| `01-lead-intake` | Three webhooks (Meta, website, referral), each tagged with its source. Normalizes the data, dedupes, creates the GHL contact and deal, asks Gemini to qualify, moves the deal and sends the first reply. Also schedules the booking chase. |
 | `02-send-message` | Sub-workflow and the **only** place that messages a lead. Reserves the send in a ledger first, refuses if a human has taken over, then calls GHL. |
 | `03-appointment-events` | GHL calendar events. Works out whether each one is a booking, reschedule, cancellation, no-show or show; moves the deal; kills old reminders; queues new ones. |
 | `04-scheduler` | Every minute: claims due reminders, chases and re-books, re-checks each one is still valid, then sends it. |
@@ -110,7 +110,7 @@ Two independent locks:
 
 - **Crashes:** every workflow names `07-error-handler` as its error workflow, which posts
   to Slack and sends an email with a link to the failed execution.
-- **Soft failures:** a failed Claude call parks the lead in Needs Review and still sends a
+- **Soft failures:** a failed Gemini call parks the lead in Needs Review and still sends a
   reply, then alerts. If GHL refuses a message, the ledger records it and an alert goes out.
   A lead without an email or phone also triggers an alert.
 - **Silent failures:** the watchdog alerts when a lead has had no reply after 5 minutes,
@@ -149,7 +149,7 @@ The ideal client is a **B2B** company (services, SaaS, professional services) wi
 **10 to 200 employees**. It spends **$5,000 or more a month** on marketing, the person
 filling in the form is a **decision maker**, and it wants to start within **90 days**.
 
-Claude (`claude-opus-5-5`, low effort, JSON-schema output) scores each lead from 0 to 100
+Gemini (`gemini-3.5-flash-lite` on the free tier, JSON-schema output) scores each lead from 0 to 100
 on five weighted factors: business model fit 30, size 20, budget 25, authority 15 and
 timeline 10. It returns a label, the score and a one-line reason. The full rules are in
 [`prompts/qualification-system-prompt.md`](prompts/qualification-system-prompt.md).
@@ -160,7 +160,7 @@ timeline 10. It returns a label, the score and a one-line reason. The full rules
 | Needs review | 40 to 69, budget $2k to $5k, 500+ staff, missing or odd answers, or AI unavailable | short holding reply, team pinged, watchdog nags after 2h |
 | Not qualified | score < 40, or B2C, job seeker, vendor, budget under $2k | one polite email, deal marked lost |
 
-Code then enforces the rules after Claude answers. A "qualified" label with a score under
+Code then enforces the rules after Gemini answers. A "qualified" label with a score under
 70 is downgraded to Needs Review. Form answers are passed as data, so text in a form field
 can't change the rules.
 
@@ -230,7 +230,7 @@ Monthly costs are spread across the days of the month, so any date range adds up
 3. **n8n credentials:**
    - `STL Postgres`
    - `GHL Private Integration`: Header Auth, `Authorization: Bearer <token>`
-   - `Anthropic API`: Header Auth, `x-api-key: <key>`
+   - `Gemini API`: Header Auth, `x-goog-api-key: <key>` (free key from Google AI Studio)
    - `Alerts SMTP`
 4. **Import:** run `N8N_URL=… N8N_API_KEY=… python3 scripts/deploy_to_n8n.py`. It creates
    all 9 workflows and wires the sub-workflow and error-workflow IDs. Select the credentials
@@ -258,7 +258,7 @@ executions and Slack open side by side.
    referrals bring the cheapest booked calls at $243. Meta has the cheapest leads, but 43%
    of its calls no-show, so each show costs $577."
 2. Run `./simulate.sh meta`. Show the n8n execution: the webhook, normalize, dedupe, GHL
-   contact tagged `source-meta`, and the deal in New Lead. Then Claude returns
+   contact tagged `source-meta`, and the deal in New Lead. Then Gemini returns
    `qualified · 86 · "B2B SaaS, 25-50 staff, $8-15k/mo, founder, starting this month."`
 3. Show the phone or the GHL conversation: the SMS and email with the booking link, about
    60 seconds after opt-in. Show the deal in *Qualified – Link Sent* and the score fields on
@@ -286,6 +286,6 @@ executions and Slack open side by side.
    pending messages go to `cancelled`. Re-run a booking event: the reminders are queued but
    skipped with "automation paused".
 5. **Failures:** run `./simulate.sh broken` for an instant alert. Then deactivate the
-   scheduler and show the watchdog's "messages are overdue" alert. Break the Anthropic key
+   scheduler and show the watchdog's "messages are overdue" alert. Break the Gemini key
    and show the lead still getting a holding reply, plus an "AI failed" alert.
 6. End on `python3 scripts/test_guarantees.py`: 23/23 guarantees hold.
