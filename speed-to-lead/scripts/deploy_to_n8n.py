@@ -8,8 +8,14 @@ and wires the sub-workflow / error-workflow IDs together.
     python3 speed-to-lead/scripts/deploy_to_n8n.py [--activate]
 
 Credentials are not created here: after the first deploy, open each workflow
-once and select your "STL Postgres", "GHL Private Integration", "Anthropic API"
-and "Alerts SMTP" credentials, then run again with --activate.
+once and select your "STL Postgres", "GHL Private Integration", "Gemini API"
+and "Alerts SMTP" credentials, then run again with --activate. On a re-deploy,
+credentials already selected on a node are kept (matched by credential name),
+but other edits made in the n8n editor are overwritten by the JSON files.
+
+n8n 2.x only lets a workflow name an error workflow, or call a sub-workflow,
+that has been published, so the sub-workflows and the error handler are
+published first.
 """
 import json
 import os
@@ -49,11 +55,23 @@ def main():
         body = {k: wf[k] for k in ("name", "nodes", "connections", "settings")}
         if wf["name"] in existing:
             ids[f] = existing[wf["name"]]
+            # keep the credentials already selected in n8n (the JSON only has stub ids)
+            chosen = {c["name"]: c["id"] for n in api("GET", f"/workflows/{ids[f]}").get("nodes", [])
+                      for c in (n.get("credentials") or {}).values()}
+            for n in body["nodes"]:
+                for c in (n.get("credentials") or {}).values():
+                    c["id"] = chosen.get(c["name"], c["id"])
             api("PUT", f"/workflows/{ids[f]}", body)
             print("updated", wf["name"], ids[f])
         else:
             ids[f] = api("POST", "/workflows", body)["id"]
             print("created", wf["name"], ids[f])
+
+    # Publish the sub-workflows and the error handler: n8n 2.x refuses an
+    # unpublished error workflow and runs only the published version of a sub-workflow.
+    for f in PLACEHOLDER:
+        api("POST", f"/workflows/{ids[f]}/activate")
+        print("published", f)
 
     # Second pass: every workflow except the handler reports errors to the handler.
     for f in ORDER:
@@ -62,11 +80,13 @@ def main():
         wf = api("GET", f"/workflows/{ids[f]}")
         wf["settings"]["errorWorkflow"] = ids["07-error-handler"]
         api("PUT", f"/workflows/{ids[f]}", {k: wf[k] for k in ("name", "nodes", "connections", "settings")})
+        if f in PLACEHOLDER:
+            api("POST", f"/workflows/{ids[f]}/activate")  # re-publish the edited version
 
     if "--activate" in sys.argv:
         for f in ORDER:
             if f in PLACEHOLDER:
-                continue  # sub-workflows and the error handler do not need activating
+                continue  # already published above
             api("POST", f"/workflows/{ids[f]}/activate")
             print("activated", f)
     print(json.dumps(ids, indent=2))

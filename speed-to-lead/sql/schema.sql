@@ -41,7 +41,7 @@ INSERT INTO settings (key, value) VALUES
   ('TEAM_TIMEZONE',              'America/New_York'),
   ('ALERT_SLACK_WEBHOOK_URL',    'https://hooks.slack.com/services/REPLACE_ME'),
   ('ALERT_EMAIL_TO',             'owner@example.com'),
-  ('CLAUDE_MODEL',               'claude-opus-5-5'),
+  ('AI_MODEL',                   'gemini-3.5-flash-lite'),
   ('N8N_BASE_URL',               'https://your-n8n.example.com')
 ON CONFLICT (key) DO NOTHING;
 

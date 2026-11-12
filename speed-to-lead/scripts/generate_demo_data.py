@@ -60,7 +60,7 @@ def opt_in_time(d, evening_share):
 
 
 def reply_minutes():
-    """Automation: webhook -> GHL -> Claude -> send. Mostly 1-2 minutes."""
+    """Automation: webhook -> GHL -> Gemini -> send. Mostly 1-2 minutes."""
     m = rng.lognormvariate(math.log(1.15), 0.35)
     if rng.random() < 0.015:            # GHL API slowness; retries kick in
         m = rng.uniform(3.5, 7.5)
