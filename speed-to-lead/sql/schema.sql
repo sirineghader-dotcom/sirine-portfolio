@@ -36,6 +36,7 @@ INSERT INTO settings (key, value) VALUES
   ('STAGE_CALL_CANCELLED',       'REPLACE_ME'),
   ('STAGE_NO_SHOW',              'REPLACE_ME'),
   ('STAGE_SHOWED',               'REPLACE_ME'),
+  ('SMS_ENABLED',                'true'),
   ('BOOKING_LINK',               'https://api.leadconnectorhq.com/widget/booking/REPLACE_ME'),
   ('EMAIL_FROM_NAME',            'Northwind Growth'),
   ('TEAM_TIMEZONE',              'America/New_York'),

@@ -175,6 +175,12 @@ can't change the rules.
 | Cancelled | SMS, then email | immediately, then +2 days |
 | No-show re-book | SMS, email, SMS | +15 minutes, +1 day, +3 days. Stops when re-booked |
 
+**Email-only mode.** SMS needs a phone number in GHL (Settings → Phone System). Without
+one, set `SMS_ENABLED` to `false` in the `settings` table: every SMS step whose email twin
+goes out at the same moment is dropped, and the rest (2h reminder, chase steps, re-book
+steps) are sent as emails with the same wording. Timings and dedupe rules stay the same.
+Set it back to `true` once a number is connected.
+
 The booking tool is the GHL calendar, so appointment events arrive natively. All copy lives
 in one place (the `Render template` node in `02-send-message`).
 

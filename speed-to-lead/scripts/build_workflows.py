@@ -470,7 +470,14 @@ const plan = {
   not_qualified: [['Email', 'intake_not_qualified_email'], ['SMS', 'intake_not_qualified_sms']],
   needs_review:  [['SMS', 'intake_review_sms'], ['Email', 'intake_review_email']],
 }[q.classification];
-const can = { SMS: !!q.phone, Email: !!q.email };
+// SMS_ENABLED = 'false' (no phone number in GHL): an SMS step is dropped when an
+// email of the same step goes out at the same time, otherwise it is sent as an email.
+const smsOn = String($('Load settings').first().json.cfg.SMS_ENABLED) !== 'false';
+const base = k => k.replace(/_(sms|email)$/, '');
+const channelFix = list => smsOn ? list : list
+  .filter(m => !(m.channel === 'SMS' && list.some(o => o.channel === 'Email' && base(o.template_key) === base(m.template_key))))
+  .map(m => (m.channel === 'SMS' ? { ...m, channel: 'Email' } : m));
+const can = { SMS: !!q.phone && smsOn, Email: !!q.email };
 let picks = plan.filter(([ch]) => can[ch]);
 if (q.classification === 'not_qualified') picks = picks.slice(0, 1);
 return picks.map(([channel, template_key]) => ({ json: {
@@ -505,9 +512,11 @@ return [{ json: { ok, lead_id: q.lead_id, classification: q.classification, resu
 INSERT INTO scheduled_messages (lead_id, contact_id, sequence, template_key, channel, send_at, dedupe_key)
 SELECT l.id, l.contact_id, 'chase', s.template_key, s.channel, now() + s.delay, l.id || ':' || s.template_key
 FROM leads l
-JOIN (VALUES ('chase_1_sms',   'SMS',   interval '4 hours'),
-             ('chase_2_email', 'Email', interval '1 day'),
-             ('chase_3_sms',   'SMS',   interval '3 days')) AS s(template_key, channel, delay) ON true
+CROSS JOIN (SELECT COALESCE((SELECT value FROM settings WHERE key = 'SMS_ENABLED'), 'true') <> 'false' AS sms_on) cfg
+JOIN LATERAL (SELECT v.template_key, CASE WHEN v.channel = 'SMS' AND NOT cfg.sms_on THEN 'Email' ELSE v.channel END AS channel, v.delay
+      FROM (VALUES ('chase_1_sms',   'SMS',   interval '4 hours'),
+                   ('chase_2_email', 'Email', interval '1 day'),
+                   ('chase_3_sms',   'SMS',   interval '3 days')) AS v(template_key, channel, delay)) AS s ON true
 WHERE l.id = $1::uuid
   AND ((s.channel = 'SMS' AND l.phone IS NOT NULL) OR (s.channel = 'Email' AND l.email IS NOT NULL))
 ON CONFLICT (dedupe_key) DO NOTHING;
@@ -608,8 +617,14 @@ const T = {
 const t = T[input.template_key];
 if (!t) throw new Error(`Unknown template_key ${input.template_key}`);
 const isEmail = input.channel === 'Email';
+// An SMS template sent by email (SMS turned off): same words, a subject, no STOP line.
+const asEmail = Array.isArray(t) ? t : [
+  { chase: `Your strategy call with ${brand}`, booking: `Your ${brand} strategy call`, reminder: `Reminder: your ${brand} call`,
+    cancel: `Want a new time, ${name}?`, noshow: `Sorry we missed you, ${name}`, intake: `Thanks for reaching out, ${name}` }[input.template_key.split('_')[0]] || brand,
+  `<p>${t.replace(/ Reply STOP to opt out\.?$/, '').replace(/(https?:\/\/\S+?)([.,!?]?)(?=\s|$)/g, '<a href="$1">$1</a>$2')}</p><p>The ${brand} team</p>`,
+];
 const body = isEmail
-  ? { type: 'Email', contactId: input.contact_id, subject: t[0], html: t[1] }
+  ? { type: 'Email', contactId: input.contact_id, subject: asEmail[0], html: asEmail[1] }
   : { type: 'SMS', contactId: input.contact_id, message: t };
 return { json: { input, body } };
 """, (880, 200), each=True)
@@ -774,12 +789,19 @@ const P = {
   showed: { stage: 'STAGE_SHOWED', lead_stage: 'showed', cancel: ['chase', 'rebook', 'reminder'], why: 'showed', now: [], later: [] },
 }[a.action];
 
+// SMS_ENABLED = 'false' (no phone number in GHL): an SMS step is dropped when an
+// email of the same step goes out at the same time, otherwise it is sent as an email.
+const smsOn = String($('Load settings').first().json.cfg.SMS_ENABLED) !== 'false';
+const base = k => k.replace(/_(sms|email)$/, '');
+const channelFix = list => smsOn ? list : list
+  .filter(m => !(m.channel === 'SMS' && list.some(o => o.channel === 'Email' && base(o.template_key) === base(m.template_key))))
+  .map(m => (m.channel === 'SMS' ? { ...m, channel: 'Email' } : m));
 const chan = t => (t.endsWith('_sms') ? 'SMS' : 'Email');
 return { json: {
   ...a, plan: {
     stage_key: P.stage, lead_stage: P.lead_stage, cancel: P.cancel, why: P.why,
-    later: P.later.map(m => ({ ...m, dedupe_key: key(m.template_key) })),
-    now: P.now.map(t => ({ template_key: t, channel: chan(t), dedupe_key: key(t) })),
+    later: channelFix(P.later).map(m => ({ ...m, dedupe_key: key(m.template_key) })),
+    now: channelFix(P.now.map(t => ({ template_key: t, channel: chan(t) }))).map(m => ({ ...m, dedupe_key: key(m.template_key) })),
   },
 }};
 """, (1540, 200), each=True)
