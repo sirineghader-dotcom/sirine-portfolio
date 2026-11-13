@@ -150,7 +150,7 @@ def ghl_hook(wf, name, setting, body_expr, pos, on_error=None, **extra):
 
 
 def contact_payload(email, first, last, phone, company, source, stage, qualification="''", score="''",
-                    reason="''", status="'open'", extra_tag="''"):
+                    reason="''", status="'open'", extra_tag="'sg-stl-lead'"):
     """The one shape every call to 'SG STL · Update contact & deal' sends, so GHL maps it once."""
     return f"""{{
   email: {email}, first_name: {first} || '', last_name: {last} || '', phone: {phone} || '',
