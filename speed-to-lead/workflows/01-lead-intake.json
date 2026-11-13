@@ -128,7 +128,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const l = { ...$json };\nconst clean = s => (s == null ? null : String(s).trim() || null);\nfor (const k of Object.keys(l)) if (typeof l[k] === 'string') l[k] = clean(l[k]);\nif (!l.first_name && l.full_name) {\n  const [first, ...rest] = l.full_name.split(/\\s+/);\n  l.first_name = first; l.last_name = l.last_name || rest.join(' ') || null;\n}\nl.email = l.email ? l.email.toLowerCase() : null;\nif (l.phone) {\n  let d = l.phone.replace(/[^\\d+]/g, '');\n  if (!d.startsWith('+')) d = d.length === 10 ? '+1' + d : '+' + d;\n  l.phone = d;\n}\nl.valid = Boolean(l.email || l.phone);\n// Same event delivered 3 times -> same key. Provider id when the source has one,\n// otherwise source + contact + day (a same-day resubmit is the same opt-in).\nconst day = l.opted_in_at.slice(0, 10);\nl.event_key = l.provider_id\n  ? `${l.source}:${l.provider_id}`\n  : `${l.source}:${l.email || l.phone}:${day}`;\nl.answers = {\n  company: l.company, website: l.website, role: l.role, company_size: l.company_size,\n  monthly_budget: l.monthly_budget, timeline: l.timeline, challenge: l.challenge,\n  referrer: l.referrer || null, campaign: l.campaign || null,\n};\nreturn { json: l };",
+        "jsCode": "const l = { ...$json };\nconst clean = s => (s == null ? null : String(s).trim() || null);\nfor (const k of Object.keys(l)) if (typeof l[k] === 'string') l[k] = clean(l[k]);\nif (!l.first_name && l.full_name) {\n  const [first, ...rest] = l.full_name.split(/\\s+/);\n  l.first_name = first; l.last_name = l.last_name || rest.join(' ') || null;\n}\nl.email = l.email ? l.email.toLowerCase() : null;\nif (l.phone) {\n  let d = l.phone.replace(/[^\\d+]/g, '');\n  if (!d.startsWith('+')) d = d.length === 10 ? '+1' + d : '+' + d;\n  l.phone = d;\n}\nl.valid = Boolean(l.email || l.phone);\n// GHL matches contacts by email (then phone); we use the same value as our contact key.\nl.contact_key = (l.email || l.phone || '').toLowerCase() || null;\n// Same event delivered 3 times -> same key. Provider id when the source has one,\n// otherwise source + contact + day (a same-day resubmit is the same opt-in).\nconst day = l.opted_in_at.slice(0, 10);\nl.event_key = l.provider_id\n  ? `${l.source}:${l.provider_id}`\n  : `${l.source}:${l.email || l.phone}:${day}`;\nl.answers = {\n  company: l.company, website: l.website, role: l.role, company_size: l.company_size,\n  monthly_budget: l.monthly_budget, timeline: l.timeline, challenge: l.challenge,\n  referrer: l.referrer || null, campaign: l.campaign || null,\n};\nreturn { json: l };",
         "mode": "runOnceForEachItem"
       },
       "id": "2973fe8c-1165-53ce-91d8-2171d45b4d7d",
@@ -272,7 +272,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO leads (event_key, source, first_name, last_name, email, phone, company, answers, opted_in_at)\nSELECT p->>'event_key', p->>'source', p->>'first_name', p->>'last_name', p->>'email', p->>'phone',\n       p->>'company', p->'answers', (p->>'opted_in_at')::timestamptz\nFROM (SELECT $1::jsonb AS p) i\nON CONFLICT (event_key) DO UPDATE SET updated_at = now()\nRETURNING id AS lead_id;",
+        "query": "INSERT INTO leads (event_key, source, contact_id, first_name, last_name, email, phone, company, answers, opted_in_at)\nSELECT p->>'event_key', p->>'source', p->>'contact_key', p->>'first_name', p->>'last_name', p->>'email', p->>'phone',\n       p->>'company', p->'answers', (p->>'opted_in_at')::timestamptz\nFROM (SELECT $1::jsonb AS p) i\nON CONFLICT (event_key) DO UPDATE SET updated_at = now()\nRETURNING id AS lead_id;",
         "options": {
           "queryReplacement": "={{ [ JSON.stringify($('Validate + build event key').item.json) ] }}"
         }
@@ -316,87 +316,22 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://services.leadconnectorhq.com/contacts/upsert",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Version",
-              "value": "2021-07-28"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 20000
-        },
+        "url": "={{ $('Load settings').first().json.cfg.GHL_HOOK_CONTACT }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  locationId: $('Load settings').first().json.cfg.GHL_LOCATION_ID,\n  firstName: $('Validate + build event key').item.json.first_name, lastName: $('Validate + build event key').item.json.last_name,\n  email: $('Validate + build event key').item.json.email, phone: $('Validate + build event key').item.json.phone, companyName: $('Validate + build event key').item.json.company, website: $('Validate + build event key').item.json.website,\n  source: ({meta: 'Meta Lead Ad', website: 'Website form', referral: 'Referral'})[$('Validate + build event key').item.json.source],\n  tags: ['stl-lead', 'source-' + $('Validate + build event key').item.json.source]\n}) }}"
+        "jsonBody": "={{ JSON.stringify({\n  email: $('Validate + build event key').item.json.email, first_name: $('Validate + build event key').item.json.first_name || '', last_name: $('Validate + build event key').item.json.last_name || '', phone: $('Validate + build event key').item.json.phone || '',\n  company: $('Validate + build event key').item.json.company || '', source: $('Validate + build event key').item.json.source,\n  source_label: ({meta: 'Meta Lead Ad', website: 'Website form', referral: 'Referral'})[$('Validate + build event key').item.json.source] || $('Validate + build event key').item.json.source,\n  source_tag: 'source-' + $('Validate + build event key').item.json.source,\n  stage: 'new_lead', status: 'open',\n  qualification: '', score: '', reason: '',\n  extra_tag: ''\n}) }}",
+        "options": {
+          "timeout": 20000
+        }
       },
-      "id": "4e5e824d-fe5b-501b-b6a2-59b14cc63ff9",
-      "name": "Upsert GHL contact",
+      "id": "6ce59188-2a4e-5fda-b431-08b598a80b2e",
+      "name": "GHL: create contact + deal",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         1760,
         200
       ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "stl-ghl",
-          "name": "GHL Private Integration"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://services.leadconnectorhq.com/opportunities/upsert",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Version",
-              "value": "2021-07-28"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 20000
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  locationId: $('Load settings').first().json.cfg.GHL_LOCATION_ID,\n  pipelineId: $('Load settings').first().json.cfg.GHL_PIPELINE_ID,\n  pipelineStageId: $('Load settings').first().json.cfg.STAGE_NEW_LEAD,\n  contactId: $json.contact.id,\n  name: ($('Validate + build event key').item.json.company || $('Validate + build event key').item.json.first_name || 'New lead') + ' \u00b7 ' + $('Validate + build event key').item.json.source,\n  status: 'open',\n  source: $('Validate + build event key').item.json.source\n}) }}"
-      },
-      "id": "1e762e9f-1ef5-5378-bc34-daac687554d6",
-      "name": "Open deal in New Lead",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1980,
-        200
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "stl-ghl",
-          "name": "GHL Private Integration"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -444,7 +379,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Never trust the model blindly: validate, then make the label agree with the score.\nconst r = $json;\nlet out = null, aiError = null;\ntry {\n  // Gemini Interactions API: { status, steps: [{ type: 'model_output', content: [{ type: 'text', text }] }], errors }\n  if (r.error) throw new Error(r.error.message || JSON.stringify(r.error));\n  if (r.errors?.length) throw new Error(r.errors.map(e => e.message).join('; '));\n  if (r.status !== 'completed') throw new Error(`status ${r.status || 'missing'}`);\n  const outputs = (r.steps || []).filter(s => s.type === 'model_output');\n  const blocks = outputs.flatMap(s => s.content || []).filter(b => b.type === 'text');\n  const text = blocks.length ? blocks[blocks.length - 1].text : r.output_text;\n  if (!text) throw new Error('empty answer');\n  out = JSON.parse(text);\n  if (!['qualified', 'not_qualified', 'needs_review'].includes(out.classification)) throw new Error('bad label');\n  out.score = Math.max(0, Math.min(100, Math.round(Number(out.score))));\n  if (Number.isNaN(out.score)) throw new Error('bad score');\n  out.reason = String(out.reason || '').slice(0, 160);\n} catch (e) { aiError = e.message; }\n\nif (aiError) {\n  out = { classification: 'needs_review', score: 50,\n          reason: 'AI check unavailable, so a person should review this lead.', hard_disqualifier: false };\n}\n// Consistency rules from the ideal-client definition.\nif (out.classification === 'qualified' && (out.score < 70 || out.hard_disqualifier)) out.classification = 'needs_review';\nif (out.classification === 'not_qualified' && out.score >= 70 && !out.hard_disqualifier) out.classification = 'needs_review';\n\nconst lead = $('Validate + build event key').item.json;\nreturn { json: {\n  ...out, ai_error: aiError,\n  lead_id: $('Create lead row').item.json.lead_id,\n  contact_id: $('Upsert GHL contact').item.json.contact.id,\n  opportunity_id: $('Open deal in New Lead').item.json.opportunity?.id || $('Open deal in New Lead').item.json.id,\n  source: lead.source, first_name: lead.first_name, email: lead.email, phone: lead.phone, company: lead.company,\n}};",
+        "jsCode": "// Never trust the model blindly: validate, then make the label agree with the score.\nconst r = $json;\nlet out = null, aiError = null;\ntry {\n  // Gemini Interactions API: { status, steps: [{ type: 'model_output', content: [{ type: 'text', text }] }], errors }\n  if (r.error) throw new Error(r.error.message || JSON.stringify(r.error));\n  if (r.errors?.length) throw new Error(r.errors.map(e => e.message).join('; '));\n  if (r.status !== 'completed') throw new Error(`status ${r.status || 'missing'}`);\n  const outputs = (r.steps || []).filter(s => s.type === 'model_output');\n  const blocks = outputs.flatMap(s => s.content || []).filter(b => b.type === 'text');\n  const text = blocks.length ? blocks[blocks.length - 1].text : r.output_text;\n  if (!text) throw new Error('empty answer');\n  out = JSON.parse(text);\n  if (!['qualified', 'not_qualified', 'needs_review'].includes(out.classification)) throw new Error('bad label');\n  out.score = Math.max(0, Math.min(100, Math.round(Number(out.score))));\n  if (Number.isNaN(out.score)) throw new Error('bad score');\n  out.reason = String(out.reason || '').slice(0, 160);\n} catch (e) { aiError = e.message; }\n\nif (aiError) {\n  out = { classification: 'needs_review', score: 50,\n          reason: 'AI check unavailable, so a person should review this lead.', hard_disqualifier: false };\n}\n// Consistency rules from the ideal-client definition.\nif (out.classification === 'qualified' && (out.score < 70 || out.hard_disqualifier)) out.classification = 'needs_review';\nif (out.classification === 'not_qualified' && out.score >= 70 && !out.hard_disqualifier) out.classification = 'needs_review';\n\nconst lead = $('Validate + build event key').item.json;\nreturn { json: {\n  ...out, ai_error: aiError,\n  lead_id: $('Create lead row').item.json.lead_id,\n  contact_id: lead.contact_key,\n  source: lead.source, last_name: lead.last_name, first_name: lead.first_name, email: lead.email, phone: lead.phone, company: lead.company,\n}};",
         "mode": "runOnceForEachItem"
       },
       "id": "d3cee82b-5cc4-5747-9259-e2965711e010",
@@ -521,7 +456,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE leads SET\n  contact_id = p->>'contact_id', opportunity_id = p->>'opportunity_id',\n  qualification = p->>'classification', score = (p->>'score')::int, reason = p->>'reason',\n  stage = CASE p->>'classification' WHEN 'qualified' THEN 'qualified_link_sent'\n                                    WHEN 'not_qualified' THEN 'not_qualified' ELSE 'needs_review' END,\n  updated_at = now()\nFROM (SELECT $1::jsonb AS p) i\nWHERE id = (p->>'lead_id')::uuid\nRETURNING id AS lead_id;",
+        "query": "UPDATE leads SET\n  qualification = p->>'classification', score = (p->>'score')::int, reason = p->>'reason',\n  stage = CASE p->>'classification' WHEN 'qualified' THEN 'qualified_link_sent'\n                                    WHEN 'not_qualified' THEN 'not_qualified' ELSE 'needs_review' END,\n  updated_at = now()\nFROM (SELECT $1::jsonb AS p) i\nWHERE id = (p->>'lead_id')::uuid\nRETURNING id AS lead_id;",
         "options": {
           "queryReplacement": "={{ [ JSON.stringify($json) ] }}"
         }
@@ -543,132 +478,23 @@
     },
     {
       "parameters": {
-        "method": "PUT",
-        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Parse + guardrails').item.json.contact_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Version",
-              "value": "2021-07-28"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 20000
-        },
+        "method": "POST",
+        "url": "={{ $('Load settings').first().json.cfg.GHL_HOOK_CONTACT }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  customFields: [\n    { key: 'lead_score', field_value: $('Parse + guardrails').item.json.score },\n    { key: 'qualification', field_value: $('Parse + guardrails').item.json.classification },\n    { key: 'qualification_reason', field_value: $('Parse + guardrails').item.json.reason },\n    { key: 'lead_source', field_value: $('Parse + guardrails').item.json.source }\n  ]\n}) }}"
+        "jsonBody": "={{ JSON.stringify({\n  email: $('Parse + guardrails').item.json.email, first_name: $('Parse + guardrails').item.json.first_name || '', last_name: $('Parse + guardrails').item.json.last_name || '', phone: $('Parse + guardrails').item.json.phone || '',\n  company: $('Parse + guardrails').item.json.company || '', source: $('Parse + guardrails').item.json.source,\n  source_label: ({meta: 'Meta Lead Ad', website: 'Website form', referral: 'Referral'})[$('Parse + guardrails').item.json.source] || $('Parse + guardrails').item.json.source,\n  source_tag: 'source-' + $('Parse + guardrails').item.json.source,\n  stage: ({ qualified: 'qualified_link_sent', not_qualified: 'not_qualified', needs_review: 'needs_review' })[$('Parse + guardrails').item.json.classification], status: $('Parse + guardrails').item.json.classification === 'not_qualified' ? 'lost' : 'open',\n  qualification: $('Parse + guardrails').item.json.classification, score: $('Parse + guardrails').item.json.score, reason: $('Parse + guardrails').item.json.reason,\n  extra_tag: 'ai-' + $('Parse + guardrails').item.json.classification.replace('_', '-')\n}) }}",
+        "options": {
+          "timeout": 20000
+        }
       },
-      "id": "02163af9-70a2-56e9-babd-aa6b957c3d77",
-      "name": "Write score to contact",
+      "id": "c37c240b-84d9-5bbf-b7cc-b9ad2c49efa9",
+      "name": "GHL: score + move deal",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         2860,
         200
       ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "stl-ghl",
-          "name": "GHL Private Integration"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Parse + guardrails').item.json.contact_id }}/tags",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Version",
-              "value": "2021-07-28"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 20000
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ tags: ['ai-' + $('Parse + guardrails').item.json.classification.replace('_', '-')] }) }}"
-      },
-      "id": "c6919675-77cb-5a84-9ee4-19eb3da0fa6e",
-      "name": "Tag qualification",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3080,
-        200
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "stl-ghl",
-          "name": "GHL Private Integration"
-        }
-      },
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000
-    },
-    {
-      "parameters": {
-        "method": "PUT",
-        "url": "=https://services.leadconnectorhq.com/opportunities/{{ $('Parse + guardrails').item.json.opportunity_id }}",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Version",
-              "value": "2021-07-28"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 20000
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  pipelineStageId: ({\n    qualified: $('Load settings').first().json.cfg.STAGE_QUALIFIED_LINK_SENT,\n    not_qualified: $('Load settings').first().json.cfg.STAGE_NOT_QUALIFIED,\n    needs_review: $('Load settings').first().json.cfg.STAGE_NEEDS_REVIEW\n  })[$('Parse + guardrails').item.json.classification],\n  status: $('Parse + guardrails').item.json.classification === 'not_qualified' ? 'lost' : 'open'\n}) }}"
-      },
-      "id": "5249425e-7398-5d61-9113-80d593ccb1b6",
-      "name": "Move deal to result stage",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3300,
-        200
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "stl-ghl",
-          "name": "GHL Private Integration"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
@@ -1057,25 +883,14 @@
       "main": [
         [
           {
-            "node": "Upsert GHL contact",
+            "node": "GHL: create contact + deal",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Upsert GHL contact": {
-      "main": [
-        [
-          {
-            "node": "Open deal in New Lead",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Open deal in New Lead": {
+    "GHL: create contact + deal": {
       "main": [
         [
           {
@@ -1139,36 +954,14 @@
       "main": [
         [
           {
-            "node": "Write score to contact",
+            "node": "GHL: score + move deal",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Write score to contact": {
-      "main": [
-        [
-          {
-            "node": "Tag qualification",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Tag qualification": {
-      "main": [
-        [
-          {
-            "node": "Move deal to result stage",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Move deal to result stage": {
+    "GHL: score + move deal": {
       "main": [
         [
           {

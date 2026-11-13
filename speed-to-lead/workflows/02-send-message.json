@@ -36,7 +36,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "-- One atomic statement: refuse if a human has taken over, refuse if this exact\n-- message (dedupe_key) was ever reserved before. Only then may we call GHL.\nWITH i AS (SELECT $1::jsonb AS p),\nlead AS (SELECT l.* FROM leads l, i WHERE l.id = (i.p->>'lead_id')::uuid),\nins AS (\n  INSERT INTO sent_messages (dedupe_key, lead_id, contact_id, channel, template_key)\n  SELECT p->>'dedupe_key', (p->>'lead_id')::uuid, p->>'contact_id', p->>'channel', p->>'template_key' FROM i\n  WHERE NOT EXISTS (SELECT 1 FROM lead WHERE automation_paused)\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING dedupe_key\n)\nSELECT EXISTS (SELECT 1 FROM ins) AS reserved,\n       COALESCE((SELECT automation_paused FROM lead), false) AS paused,\n       (SELECT p FROM i) AS input,\n       (SELECT jsonb_build_object('first_name', first_name, 'company', company, 'source', source) FROM lead) AS lead,\n       (SELECT jsonb_build_object('start_time', a.start_time) FROM appointments a, i\n         WHERE a.appointment_id = i.p->>'appointment_id') AS appointment;",
+        "query": "-- One atomic statement: refuse if a human has taken over, refuse if this exact\n-- message (dedupe_key) was ever reserved before. Only then may we call GHL.\nWITH i AS (SELECT $1::jsonb AS p),\nlead AS (SELECT l.* FROM leads l, i WHERE l.id = (i.p->>'lead_id')::uuid),\nins AS (\n  INSERT INTO sent_messages (dedupe_key, lead_id, contact_id, channel, template_key)\n  SELECT p->>'dedupe_key', (p->>'lead_id')::uuid, p->>'contact_id', p->>'channel', p->>'template_key' FROM i\n  WHERE NOT EXISTS (SELECT 1 FROM lead WHERE automation_paused)\n  ON CONFLICT (dedupe_key) DO NOTHING\n  RETURNING dedupe_key\n)\nSELECT EXISTS (SELECT 1 FROM ins) AS reserved,\n       COALESCE((SELECT automation_paused FROM lead), false) AS paused,\n       (SELECT p FROM i) AS input,\n       (SELECT jsonb_build_object('first_name', first_name, 'last_name', last_name, 'email', email, 'phone', phone,\n                                  'company', company, 'source', source) FROM lead) AS lead,\n       (SELECT jsonb_build_object('start_time', a.start_time) FROM appointments a, i\n         WHERE a.appointment_id = i.p->>'appointment_id') AS appointment;",
         "options": {
           "queryReplacement": "={{ [ JSON.stringify($('When called by another workflow').item.json) ] }}"
         }
@@ -105,7 +105,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// All customer-facing copy lives here. {{ }} placeholders are filled per lead.\nconst cfg = $('Load settings').first().json.cfg;\nconst input = $json.input, lead = $json.lead || {};\nconst tz = cfg.TEAM_TIMEZONE || 'America/New_York';\nconst when = $json.appointment?.start_time\n  ? DateTime.fromISO(new Date($json.appointment.start_time).toISOString()).setZone(tz).toFormat(\"cccc, LLL d 'at' h:mm a ZZZZ\")\n  : '';\nconst name = lead.first_name || 'there';\nconst link = cfg.BOOKING_LINK, brand = cfg.EMAIL_FROM_NAME || 'Northwind Growth';\nconst T = {\n  intake_qualified_sms: `Hi ${name}, it's ${brand}. Thanks for reaching out! You look like a great fit. Grab a 30-min strategy call here: ${link} Reply STOP to opt out.`,\n  intake_qualified_email: [`${name}, let's find your next 30 pipeline calls`,\n    `<p>Hi ${name},</p><p>Thanks for telling us about ${lead.company || 'your company'}. Based on your answers, a 30-minute strategy call is the right next step.</p><p><a href=\"${link}\">Pick a time that suits you</a></p><p>On the call we review your current acquisition costs and show you where the cheapest booked calls are hiding.</p><p>Talk soon,<br>The ${brand} team</p>`],\n  intake_not_qualified_email: [`Thanks for reaching out, ${name}`,\n    `<p>Hi ${name},</p><p>Thank you for your interest in ${brand}. Right now we focus on B2B companies with a dedicated monthly growth budget, so we don't think we'd be the best use of your money today.</p><p>Our free guides on our blog are a good place to start, and you're always welcome to reach out again as things grow.</p><p>All the best,<br>The ${brand} team</p>`],\n  intake_not_qualified_sms: `Hi ${name}, thanks for contacting ${brand}. We focus on B2B teams with a set monthly growth budget, so we may not be the best fit today, but you're welcome back anytime. Reply STOP to opt out.`,\n  intake_review_sms: `Hi ${name}, thanks for reaching out to ${brand}! A strategist is reviewing your details and will text you shortly. Reply STOP to opt out.`,\n  intake_review_email: [`We got your details, ${name}`,\n    `<p>Hi ${name},</p><p>Thanks for reaching out. A strategist is reviewing your answers personally and will get back to you today.</p><p>The ${brand} team</p>`],\n  chase_1_sms: `Hi ${name}, just checking you saw the link for your strategy call with ${brand}: ${link}`,\n  chase_2_email: [`Still keen to talk growth, ${name}?`,\n    `<p>Hi ${name},</p><p>Spots for strategy calls this week are filling up. If you'd still like one, <a href=\"${link}\">choose a time here</a>. It takes 30 seconds.</p><p>The ${brand} team</p>`],\n  chase_3_sms: `Last nudge from ${brand}, ${name}: if now's not the right time, no worries. If it is, book here: ${link}`,\n  booking_confirmed_sms: `You're booked, ${name}! Your ${brand} strategy call is ${when}. We'll send a reminder before.`,\n  booking_confirmed_email: [`Confirmed: your strategy call, ${when}`,\n    `<p>Hi ${name},</p><p>Your strategy call is confirmed for <strong>${when}</strong>.</p><p>To get the most from it, have your last 3 months of ad spend and lead numbers handy.</p><p>Need a different time? <a href=\"${link}\">Reschedule here</a>.</p><p>The ${brand} team</p>`],\n  booking_rescheduled_sms: `Got it, ${name}. Your ${brand} call has moved to ${when}. Old reminders are cancelled.`,\n  booking_rescheduled_email: [`New time: ${when}`,\n    `<p>Hi ${name},</p><p>Your strategy call has moved to <strong>${when}</strong>. See you then!</p><p>The ${brand} team</p>`],\n  reminder_24h_email: [`Tomorrow: your strategy call with ${brand}`,\n    `<p>Hi ${name},</p><p>A quick reminder that your call is <strong>${when}</strong>.</p><p>Can't make it? <a href=\"${link}\">Pick a new time</a> so the slot can go to someone else.</p><p>The ${brand} team</p>`],\n  reminder_24h_sms: `Reminder: your ${brand} strategy call is ${when}. Need to move it? ${link}`,\n  reminder_2h_sms: `See you in 2 hours, ${name}! Your ${brand} call starts ${when}.`,\n  cancel_rebook_1_sms: `Hi ${name}, we saw your ${brand} call was cancelled. No problem! Want a new time? ${link}`,\n  cancel_rebook_2_email: [`Want to pick a new time, ${name}?`,\n    `<p>Hi ${name},</p><p>Your strategy call was cancelled. If you'd still like to talk, <a href=\"${link}\">grab a new slot here</a>.</p><p>The ${brand} team</p>`],\n  noshow_rebook_1_sms: `Hi ${name}, we missed you on the call today. Life happens! Grab a new time here: ${link}`,\n  noshow_rebook_2_email: [`Sorry we missed you, ${name}`,\n    `<p>Hi ${name},</p><p>We were sorry to miss you. Your spot is still open; <a href=\"${link}\">pick a new time</a> and we'll pick up where we left off.</p><p>The ${brand} team</p>`],\n  noshow_rebook_3_sms: `Hi ${name}, one last try from ${brand}: if growth is still a priority, book a new time here: ${link}`,\n};\nconst t = T[input.template_key];\nif (!t) throw new Error(`Unknown template_key ${input.template_key}`);\nconst isEmail = input.channel === 'Email';\n// An SMS template sent by email (SMS turned off): same words, a subject, no STOP line.\nconst asEmail = Array.isArray(t) ? t : [\n  { chase: `Your strategy call with ${brand}`, booking: `Your ${brand} strategy call`, reminder: `Reminder: your ${brand} call`,\n    cancel: `Want a new time, ${name}?`, noshow: `Sorry we missed you, ${name}`, intake: `Thanks for reaching out, ${name}` }[input.template_key.split('_')[0]] || brand,\n  `<p>${t.replace(/ Reply STOP to opt out\\.?$/, '').replace(/(https?:\\/\\/\\S+?)([.,!?]?)(?=\\s|$)/g, '<a href=\"$1\">$1</a>$2')}</p><p>The ${brand} team</p>`,\n];\nconst body = isEmail\n  ? { type: 'Email', contactId: input.contact_id, subject: asEmail[0], html: asEmail[1] }\n  : { type: 'SMS', contactId: input.contact_id, message: t };\nreturn { json: { input, body } };",
+        "jsCode": "// All customer-facing copy lives here. {{ }} placeholders are filled per lead.\nconst cfg = $('Load settings').first().json.cfg;\nconst input = $json.input, lead = $json.lead || {};\nconst tz = cfg.TEAM_TIMEZONE || 'America/New_York';\nconst when = $json.appointment?.start_time\n  ? DateTime.fromISO(new Date($json.appointment.start_time).toISOString()).setZone(tz).toFormat(\"cccc, LLL d 'at' h:mm a ZZZZ\")\n  : '';\nconst name = lead.first_name || 'there';\nconst link = cfg.BOOKING_LINK, brand = cfg.EMAIL_FROM_NAME || 'Northwind Growth';\nconst T = {\n  intake_qualified_sms: `Hi ${name}, it's ${brand}. Thanks for reaching out! You look like a great fit. Grab a 30-min strategy call here: ${link} Reply STOP to opt out.`,\n  intake_qualified_email: [`${name}, let's find your next 30 pipeline calls`,\n    `<p>Hi ${name},</p><p>Thanks for telling us about ${lead.company || 'your company'}. Based on your answers, a 30-minute strategy call is the right next step.</p><p><a href=\"${link}\">Pick a time that suits you</a></p><p>On the call we review your current acquisition costs and show you where the cheapest booked calls are hiding.</p><p>Talk soon,<br>The ${brand} team</p>`],\n  intake_not_qualified_email: [`Thanks for reaching out, ${name}`,\n    `<p>Hi ${name},</p><p>Thank you for your interest in ${brand}. Right now we focus on B2B companies with a dedicated monthly growth budget, so we don't think we'd be the best use of your money today.</p><p>Our free guides on our blog are a good place to start, and you're always welcome to reach out again as things grow.</p><p>All the best,<br>The ${brand} team</p>`],\n  intake_not_qualified_sms: `Hi ${name}, thanks for contacting ${brand}. We focus on B2B teams with a set monthly growth budget, so we may not be the best fit today, but you're welcome back anytime. Reply STOP to opt out.`,\n  intake_review_sms: `Hi ${name}, thanks for reaching out to ${brand}! A strategist is reviewing your details and will text you shortly. Reply STOP to opt out.`,\n  intake_review_email: [`We got your details, ${name}`,\n    `<p>Hi ${name},</p><p>Thanks for reaching out. A strategist is reviewing your answers personally and will get back to you today.</p><p>The ${brand} team</p>`],\n  chase_1_sms: `Hi ${name}, just checking you saw the link for your strategy call with ${brand}: ${link}`,\n  chase_2_email: [`Still keen to talk growth, ${name}?`,\n    `<p>Hi ${name},</p><p>Spots for strategy calls this week are filling up. If you'd still like one, <a href=\"${link}\">choose a time here</a>. It takes 30 seconds.</p><p>The ${brand} team</p>`],\n  chase_3_sms: `Last nudge from ${brand}, ${name}: if now's not the right time, no worries. If it is, book here: ${link}`,\n  booking_confirmed_sms: `You're booked, ${name}! Your ${brand} strategy call is ${when}. We'll send a reminder before.`,\n  booking_confirmed_email: [`Confirmed: your strategy call, ${when}`,\n    `<p>Hi ${name},</p><p>Your strategy call is confirmed for <strong>${when}</strong>.</p><p>To get the most from it, have your last 3 months of ad spend and lead numbers handy.</p><p>Need a different time? <a href=\"${link}\">Reschedule here</a>.</p><p>The ${brand} team</p>`],\n  booking_rescheduled_sms: `Got it, ${name}. Your ${brand} call has moved to ${when}. Old reminders are cancelled.`,\n  booking_rescheduled_email: [`New time: ${when}`,\n    `<p>Hi ${name},</p><p>Your strategy call has moved to <strong>${when}</strong>. See you then!</p><p>The ${brand} team</p>`],\n  reminder_24h_email: [`Tomorrow: your strategy call with ${brand}`,\n    `<p>Hi ${name},</p><p>A quick reminder that your call is <strong>${when}</strong>.</p><p>Can't make it? <a href=\"${link}\">Pick a new time</a> so the slot can go to someone else.</p><p>The ${brand} team</p>`],\n  reminder_24h_sms: `Reminder: your ${brand} strategy call is ${when}. Need to move it? ${link}`,\n  reminder_2h_sms: `See you in 2 hours, ${name}! Your ${brand} call starts ${when}.`,\n  cancel_rebook_1_sms: `Hi ${name}, we saw your ${brand} call was cancelled. No problem! Want a new time? ${link}`,\n  cancel_rebook_2_email: [`Want to pick a new time, ${name}?`,\n    `<p>Hi ${name},</p><p>Your strategy call was cancelled. If you'd still like to talk, <a href=\"${link}\">grab a new slot here</a>.</p><p>The ${brand} team</p>`],\n  noshow_rebook_1_sms: `Hi ${name}, we missed you on the call today. Life happens! Grab a new time here: ${link}`,\n  noshow_rebook_2_email: [`Sorry we missed you, ${name}`,\n    `<p>Hi ${name},</p><p>We were sorry to miss you. Your spot is still open; <a href=\"${link}\">pick a new time</a> and we'll pick up where we left off.</p><p>The ${brand} team</p>`],\n  noshow_rebook_3_sms: `Hi ${name}, one last try from ${brand}: if growth is still a priority, book a new time here: ${link}`,\n};\nconst t = T[input.template_key];\nif (!t) throw new Error(`Unknown template_key ${input.template_key}`);\nconst isEmail = input.channel === 'Email';\n// An SMS template sent by email (SMS turned off): same words, a subject, no STOP line.\nconst asEmail = Array.isArray(t) ? t : [\n  { chase: `Your strategy call with ${brand}`, booking: `Your ${brand} strategy call`, reminder: `Reminder: your ${brand} call`,\n    cancel: `Want a new time, ${name}?`, noshow: `Sorry we missed you, ${name}`, intake: `Thanks for reaching out, ${name}` }[input.template_key.split('_')[0]] || brand,\n  `<p>${t.replace(/ Reply STOP to opt out\\.?$/, '').replace(/(https?:\\/\\/\\S+?)([.,!?]?)(?=\\s|$)/g, '<a href=\"$1\">$1</a>$2')}</p><p>The ${brand} team</p>`,\n];\n// Payload for the GHL workflow \"SG STL \u00b7 Send email\": it sends the message, then calls\n// back /stl/ghl-ack with dedupe_key, which is when the message counts as sent.\nconst body = {\n  email: lead.email || '', phone: lead.phone || '', first_name: lead.first_name || '', last_name: lead.last_name || '',\n  channel: input.channel, template_key: input.template_key, dedupe_key: input.dedupe_key,\n  subject: isEmail ? asEmail[0] : '', html: isEmail ? asEmail[1] : '', sms_text: isEmail ? '' : t,\n};\nreturn { json: { input, body } };",
         "mode": "runOnceForEachItem"
       },
       "id": "e999b341-429f-5bc6-89e4-309a98bc205c",
@@ -120,43 +120,22 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://services.leadconnectorhq.com/conversations/messages",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Version",
-              "value": "2021-07-28"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 20000
-        },
+        "url": "={{ $('Load settings').first().json.cfg.GHL_HOOK_EMAIL }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.body) }}"
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 20000
+        }
       },
-      "id": "8c9f8453-2fd4-5337-b688-00b9990ba8a3",
-      "name": "Send via GHL",
+      "id": "27d2c190-4872-58b1-8905-3d65ca275c5f",
+      "name": "Hand to GHL (Send email)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         1100,
         200
       ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "stl-ghl",
-          "name": "GHL Private Integration"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000,
@@ -165,13 +144,13 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH s AS (\n  UPDATE sent_messages SET status = 'sent', sent_at = now(), ghl_message_id = $2\n  WHERE dedupe_key = $1 RETURNING lead_id\n)\nUPDATE leads SET first_reply_at = COALESCE(first_reply_at, now()), updated_at = now()\nWHERE id = (SELECT lead_id FROM s)\nRETURNING id;",
+        "query": "UPDATE sent_messages SET handed_at = now() WHERE dedupe_key = $1 RETURNING dedupe_key;",
         "options": {
-          "queryReplacement": "={{ [ $('Render template').item.json.input.dedupe_key, $json.messageId || $json.emailMessageId || $json.id || null ] }}"
+          "queryReplacement": "={{ [ $('Render template').item.json.input.dedupe_key ] }}"
         }
       },
-      "id": "58ece64b-ee23-5989-af96-8d790605daab",
-      "name": "Mark sent + stamp first reply",
+      "id": "8dfce073-dd15-581f-8948-ec86d1bf497c",
+      "name": "Mark handed to GHL",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
@@ -224,7 +203,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return { json: {\n  severity: 'critical',\n  workflow: $workflow.name,\n  node: $prevNode.name,\n  message: `GHL refused ${$('Render template').item.json.input.channel} \"${$('Render template').item.json.input.template_key}\" for contact ${$('Render template').item.json.input.contact_id}. Not retried automatically to avoid a double send.`,\n  alert_key: 'send_failed:' + $('Render template').item.json.input.dedupe_key,\n  execution_id: $execution.id,\n  context: $('Render template').item.json.input,\n} };",
+        "jsCode": "return { json: {\n  severity: 'critical',\n  workflow: $workflow.name,\n  node: $prevNode.name,\n  message: `GHL did not accept ${$('Render template').item.json.input.channel} \"${$('Render template').item.json.input.template_key}\" for contact ${$('Render template').item.json.input.contact_id}. Not retried automatically to avoid a double send.`,\n  alert_key: 'send_failed:' + $('Render template').item.json.input.dedupe_key,\n  execution_id: $execution.id,\n  context: $('Render template').item.json.input,\n} };",
         "mode": "runOnceForEachItem"
       },
       "id": "ee15322f-b6f1-522f-a3d6-58d310103f47",
@@ -322,18 +301,18 @@
       "main": [
         [
           {
-            "node": "Send via GHL",
+            "node": "Hand to GHL (Send email)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send via GHL": {
+    "Hand to GHL (Send email)": {
       "main": [
         [
           {
-            "node": "Mark sent + stamp first reply",
+            "node": "Mark handed to GHL",
             "type": "main",
             "index": 0
           }
@@ -347,7 +326,7 @@
         ]
       ]
     },
-    "Mark sent + stamp first reply": {
+    "Mark handed to GHL": {
       "main": [
         [
           {

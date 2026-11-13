@@ -25,17 +25,9 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 INSERT INTO settings (key, value) VALUES
-  ('GHL_LOCATION_ID',            'REPLACE_ME'),
-  ('GHL_PIPELINE_ID',            'REPLACE_ME'),
-  ('STAGE_NEW_LEAD',             'REPLACE_ME'),
-  ('STAGE_NEEDS_REVIEW',         'REPLACE_ME'),
-  ('STAGE_QUALIFIED_LINK_SENT',  'REPLACE_ME'),
-  ('STAGE_NOT_QUALIFIED',        'REPLACE_ME'),
-  ('STAGE_CALL_BOOKED',          'REPLACE_ME'),
-  ('STAGE_CALL_RESCHEDULED',     'REPLACE_ME'),
-  ('STAGE_CALL_CANCELLED',       'REPLACE_ME'),
-  ('STAGE_NO_SHOW',              'REPLACE_ME'),
-  ('STAGE_SHOWED',               'REPLACE_ME'),
+  -- GoHighLevel "Inbound Webhook" trigger URLs of the two GHL workflows n8n calls
+  ('GHL_HOOK_CONTACT',           'https://services.leadconnectorhq.com/hooks/REPLACE_ME'),
+  ('GHL_HOOK_EMAIL',             'https://services.leadconnectorhq.com/hooks/REPLACE_ME'),
   ('SMS_ENABLED',                'true'),
   ('BOOKING_LINK',               'https://api.leadconnectorhq.com/widget/booking/REPLACE_ME'),
   ('EMAIL_FROM_NAME',            'Northwind Growth'),
@@ -147,9 +139,11 @@ CREATE TABLE IF NOT EXISTS sent_messages (
   status         text NOT NULL DEFAULT 'reserved' CHECK (status IN ('reserved','sent','failed')),
   ghl_message_id text,
   error          text,
+  handed_at      timestamptz,             -- GHL accepted the job; status becomes 'sent' when GHL confirms
   reserved_at    timestamptz NOT NULL DEFAULT now(),
   sent_at        timestamptz
 );
+ALTER TABLE sent_messages ADD COLUMN IF NOT EXISTS handed_at timestamptz;  -- for databases created earlier
 CREATE INDEX IF NOT EXISTS sent_msgid_idx ON sent_messages (ghl_message_id);
 CREATE INDEX IF NOT EXISTS sent_contact_idx ON sent_messages (contact_id, reserved_at DESC);
 

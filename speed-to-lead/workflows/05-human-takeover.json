@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// GHL OutboundMessage / InboundMessage webhooks (marketplace app or workflow relay).\nconst b = $json.body || {};\nconst direction = String(b.direction || (b.type === 'InboundMessage' ? 'inbound' : 'outbound')).toLowerCase();\nconst id = b.messageId || b.message_id || b.id;\nif (!id || !b.contactId && !b.contact_id) throw new Error(`Unrecognised message payload: ${JSON.stringify(b).slice(0, 500)}`);\nreturn { json: {\n  message_id: id, contact_id: b.contactId || b.contact_id, direction,\n  user_id: b.userId || b.user_id || null, channel: b.messageType || b.channel || null,\n  body: String(b.body || b.message || '').slice(0, 500),\n  event_key: `msg:${id}`,\n}};",
+        "jsCode": "// Sent by the GHL workflows \"SG STL \u00b7 Team replied\" (trigger: User replied) and\n// \"SG STL \u00b7 Lead replied\" (trigger: Customer replied), each with custom data kind.\n// \"User replied\" fires only for a person on the team, never for workflow emails.\nconst b = $json.body || {};\nconst cd = b.customData || b.custom_data || {};\nlet kind = cd.kind || b.kind;\nif (!kind && b.direction) kind = String(b.direction).toLowerCase() === 'inbound' ? 'lead_reply' : 'human_reply';\nconst msg = b.message || {};\nconst contact = String(b.email || b.contact?.email || b.phone || b.contact_id || b.contactId || '').toLowerCase();\nif (!['human_reply', 'lead_reply'].includes(kind) || !contact)\n  throw new Error(`Unrecognised reply payload: ${JSON.stringify(b).slice(0, 500)}`);\nconst id = msg.id || b.messageId || b.message_id || new Date().toISOString().slice(0, 16); // else: same minute = same event\nreturn { json: {\n  kind, contact_id: contact, channel: msg.type || b.messageType || null,\n  body: String(msg.body || b.body || cd.message || '').slice(0, 500),\n  event_key: `msg:${kind}:${contact}:${id}`,\n}};",
         "mode": "runOnceForEachItem"
       },
       "id": "7186a866-1d72-5ac6-bcaa-087de2e8ed8b",
@@ -109,8 +109,8 @@
           },
           "conditions": [
             {
-              "id": "5eb112c1-ff45-58ae-8d29-76aefe87bcbe",
-              "leftValue": "={{ $('Normalize message').item.json.direction === 'outbound' }}",
+              "id": "2f33dc47-1bca-528e-a902-67c2a10a112b",
+              "leftValue": "={{ $('Normalize message').item.json.kind === 'human_reply' }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -123,8 +123,8 @@
         },
         "options": {}
       },
-      "id": "7e18382c-3c9e-5ce6-9765-9f42e4528983",
-      "name": "Outbound?",
+      "id": "0ed155b3-0b60-5ef0-8a8b-7dae299d93a1",
+      "name": "Team member replied?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
@@ -134,33 +134,18 @@
     },
     {
       "parameters": {
-        "amount": 20,
-        "unit": "seconds"
-      },
-      "id": "4f827580-b050-59bb-9e29-305e9d6b5259",
-      "name": "Wait 20s for ledger",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        1100,
-        100
-      ],
-      "webhookId": "10d9b1fc-1503-5c34-84bc-5e66bcc951c1"
-    },
-    {
-      "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT EXISTS (SELECT 1 FROM sent_messages WHERE ghl_message_id = $1) AS ours,\n       EXISTS (SELECT 1 FROM sent_messages WHERE contact_id = $2 AND status = 'reserved'\n               AND reserved_at > now() - interval '2 minutes') AS send_in_flight,\n       (SELECT id FROM leads WHERE contact_id = $2 ORDER BY opted_in_at DESC LIMIT 1) AS lead_id;",
+        "query": "WITH paused AS (\n  UPDATE leads SET automation_paused = true, paused_reason = $2, paused_at = now(), updated_at = now()\n  WHERE contact_id = $1 AND NOT automation_paused\n  RETURNING id, email, first_name, last_name, phone, company, source\n),\nkilled AS (\n  UPDATE scheduled_messages SET status = 'cancelled', cancel_reason = $2, done_at = now()\n  WHERE contact_id = $1 AND status = 'pending'\n  RETURNING id\n)\nSELECT (SELECT count(*) FROM paused) AS leads_paused, (SELECT count(*) FROM killed) AS messages_cancelled,\n       (SELECT to_jsonb(p) FROM paused p LIMIT 1) AS lead;",
         "options": {
-          "queryReplacement": "={{ [ $('Normalize message').item.json.message_id, $('Normalize message').item.json.contact_id ] }}"
+          "queryReplacement": "={{ [ $('Normalize message').item.json.contact_id, 'human_reply' ] }}"
         }
       },
-      "id": "e3ac704c-5d10-56aa-b782-a019d67e838c",
-      "name": "Was it sent by automation?",
+      "id": "c9bbb1d3-ea01-5770-ac26-4a56a3e85982",
+      "name": "Pause lead + cancel queue",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1320,
+        1100,
         100
       ],
       "credentials": {
@@ -180,8 +165,8 @@
           },
           "conditions": [
             {
-              "id": "8eef99b0-22b3-5401-be55-e21f22a5b745",
-              "leftValue": "={{ !$json.ours && !!$json.lead_id && (!$json.send_in_flight || !!$('Normalize message').item.json.user_id) }}",
+              "id": "56d13078-98c5-5180-8a7c-e48e2947255c",
+              "leftValue": "={{ Number($json.leads_paused) > 0 }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -194,85 +179,41 @@
         },
         "options": {}
       },
-      "id": "af2b746e-8ba7-5e32-b09e-fc5e6ca8c5ba",
-      "name": "Human sent it?",
+      "id": "0b6ad4c9-2052-5bac-8257-ae9d42c5c1bc",
+      "name": "One of our leads?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        1540,
+        1320,
         100
       ]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "WITH paused AS (\n  UPDATE leads SET automation_paused = true, paused_reason = $2, paused_at = now(), updated_at = now()\n  WHERE contact_id = $1 AND NOT automation_paused\n  RETURNING id, first_name, company, source\n),\nkilled AS (\n  UPDATE scheduled_messages SET status = 'cancelled', cancel_reason = $2, done_at = now()\n  WHERE contact_id = $1 AND status = 'pending'\n  RETURNING id\n)\nSELECT (SELECT count(*) FROM paused) AS leads_paused, (SELECT count(*) FROM killed) AS messages_cancelled,\n       (SELECT jsonb_agg(paused) FROM paused) AS leads;",
-        "options": {
-          "queryReplacement": "={{ [ $('Normalize message').item.json.contact_id, 'human_reply' ] }}"
-        }
-      },
-      "id": "c9bbb1d3-ea01-5770-ac26-4a56a3e85982",
-      "name": "Pause lead + cancel queue",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [
-        1760,
-        100
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "stl-postgres",
-          "name": "STL Postgres"
-        }
-      }
-    },
-    {
-      "parameters": {
         "method": "POST",
-        "url": "=https://services.leadconnectorhq.com/contacts/{{ $('Normalize message').item.json.contact_id }}/tags",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Version",
-              "value": "2021-07-28"
-            },
-            {
-              "name": "Accept",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 20000
-        },
+        "url": "={{ $('Load settings').first().json.cfg.GHL_HOOK_CONTACT }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ tags: ['human-takeover'] }) }}"
+        "jsonBody": "={{ JSON.stringify({\n  email: $('Pause lead + cancel queue').item.json.lead.email, first_name: $('Pause lead + cancel queue').item.json.lead.first_name || '', last_name: $('Pause lead + cancel queue').item.json.lead.last_name || '', phone: $('Pause lead + cancel queue').item.json.lead.phone || '',\n  company: $('Pause lead + cancel queue').item.json.lead.company || '', source: $('Pause lead + cancel queue').item.json.lead.source,\n  source_label: ({meta: 'Meta Lead Ad', website: 'Website form', referral: 'Referral'})[$('Pause lead + cancel queue').item.json.lead.source] || $('Pause lead + cancel queue').item.json.lead.source,\n  source_tag: 'source-' + $('Pause lead + cancel queue').item.json.lead.source,\n  stage: '', status: 'open',\n  qualification: '', score: '', reason: '',\n  extra_tag: 'human-takeover'\n}) }}",
+        "options": {
+          "timeout": 20000
+        }
       },
-      "id": "41d027bb-2289-569b-9b2e-08e8ff0f45fe",
-      "name": "Tag human-takeover",
+      "id": "9227c67f-9a66-5263-8355-fc8c45589b84",
+      "name": "GHL: tag human-takeover",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1980,
+        1540,
         100
       ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "stl-ghl",
-          "name": "GHL Private Integration"
-        }
-      },
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "jsCode": "const m = $('Normalize message').first().json, r = $('Pause lead + cancel queue').first().json;\nreturn { json: {\n  severity: 'info', workflow: $workflow.name, node: 'Notice: automation paused',\n  message: `A team member replied to contact ${m.contact_id}. Automation is now OFF for this lead and ${r.messages_cancelled} queued message(s) were cancelled.`,\n  alert_key: 'takeover:' + m.contact_id, execution_id: $execution.id, context: { contact_id: m.contact_id },\n}};",
+        "jsCode": "const m = $('Normalize message').first().json, r = $('Pause lead + cancel queue').first().json;\nreturn { json: {\n  severity: 'info', workflow: $workflow.name, node: 'Notice: automation paused',\n  message: `A team member replied to ${m.contact_id}. Automation is now OFF for this lead and ${r.messages_cancelled} queued message(s) were cancelled.`,\n  alert_key: 'takeover:' + m.contact_id, execution_id: $execution.id, context: { contact_id: m.contact_id },\n}};",
         "mode": "runOnceForEachItem"
       },
       "id": "78d02442-7572-5f1e-b072-3b5e2f95b95d",
@@ -280,7 +221,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2200,
+        1760,
         100
       ]
     },
@@ -295,9 +236,30 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        2420,
+        1980,
         100
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT jsonb_object_agg(key, value) AS cfg FROM settings;",
+        "options": {}
+      },
+      "id": "4a2bd59c-3f87-5a06-ab4d-fbd3d128be02",
+      "name": "Load settings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1430,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
     },
     {
       "parameters": {
@@ -358,7 +320,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const m = $('Normalize message').first().json;\nreturn { json: {\n  severity: 'info', workflow: $workflow.name, node: 'Notice: lead replied',\n  message: `Lead ${m.contact_id} replied by ${m.channel || 'message'}: \"${m.body}\". Reply in GHL; your reply pauses the automation for them.`,\n  alert_key: 'reply:' + m.message_id, execution_id: $execution.id, context: { contact_id: m.contact_id },\n}};",
+        "jsCode": "const m = $('Normalize message').first().json;\nreturn { json: {\n  severity: 'info', workflow: $workflow.name, node: 'Notice: lead replied',\n  message: `Lead ${m.contact_id} replied${m.channel ? ' by ' + m.channel : ''}: \"${m.body}\". Reply in GHL; your reply pauses the automation for them.`,\n  alert_key: m.event_key ? 'reply:' + m.event_key : null, execution_id: $execution.id, context: { contact_id: m.contact_id },\n}};",
         "mode": "runOnceForEachItem"
       },
       "id": "97e93b05-eb4d-51a7-8e41-f6aff71cf912",
@@ -424,7 +386,7 @@
       "main": [
         [
           {
-            "node": "Outbound?",
+            "node": "Team member replied?",
             "type": "main",
             "index": 0
           }
@@ -438,11 +400,11 @@
         ]
       ]
     },
-    "Outbound?": {
+    "Team member replied?": {
       "main": [
         [
           {
-            "node": "Wait 20s for ledger",
+            "node": "Pause lead + cancel queue",
             "type": "main",
             "index": 0
           }
@@ -456,51 +418,40 @@
         ]
       ]
     },
-    "Wait 20s for ledger": {
-      "main": [
-        [
-          {
-            "node": "Was it sent by automation?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Was it sent by automation?": {
-      "main": [
-        [
-          {
-            "node": "Human sent it?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Human sent it?": {
-      "main": [
-        [
-          {
-            "node": "Pause lead + cancel queue",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Pause lead + cancel queue": {
       "main": [
         [
           {
-            "node": "Tag human-takeover",
+            "node": "One of our leads?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Tag human-takeover": {
+    "One of our leads?": {
+      "main": [
+        [
+          {
+            "node": "Load settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load settings": {
+      "main": [
+        [
+          {
+            "node": "GHL: tag human-takeover",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL: tag human-takeover": {
       "main": [
         [
           {

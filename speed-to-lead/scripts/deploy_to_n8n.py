@@ -28,7 +28,7 @@ BASE = os.environ["N8N_URL"].rstrip("/") + "/api/v1"
 KEY = os.environ["N8N_API_KEY"]
 # Sub-workflows first so their IDs exist before the callers are created.
 ORDER = ["06-alert", "07-error-handler", "02-send-message", "01-lead-intake", "03-appointment-events",
-         "04-scheduler", "05-human-takeover", "08-watchdog", "09-dashboard-api"]
+         "04-scheduler", "05-human-takeover", "08-watchdog", "09-dashboard-api", "10-ghl-ack"]
 PLACEHOLDER = {"06-alert": "__WF_ALERT__", "07-error-handler": "__WF_ERROR_HANDLER__",
                "02-send-message": "__WF_SEND_MESSAGE__"}
 
