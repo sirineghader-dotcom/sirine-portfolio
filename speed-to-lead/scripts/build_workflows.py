@@ -711,6 +711,7 @@ up AS (
 )
 SELECT up.appointment_id, up.contact_id, up.lead_id, up.start_time, up.version, up.status,
        l.automation_paused, l.email, l.first_name, l.last_name, l.phone, l.company, l.source,
+       l.qualification, l.score, l.reason,
        CASE
          WHEN up.appointment_id IS NULL                     THEN 'stale'
          WHEN up.lead_id IS NULL                            THEN 'unknown_lead'
@@ -842,7 +843,8 @@ SELECT (SELECT count(*) FROM killed) AS cancelled_count,
     A = "$('Plan: stage, cancels, new messages').item.json"
     ghl_hook(wf, "Move deal stage", "GHL_HOOK_CONTACT", contact_payload(
         f"{A}.email", f"{A}.first_name", f"{A}.last_name", f"{A}.phone", f"{A}.company", f"{A}.source",
-        f"{A}.plan.lead_stage"), (1980, 200))
+        f"{A}.plan.lead_stage", qualification=f"{A}.qualification || ''", score=f"{A}.score ?? ''",
+        reason=f"{A}.reason || ''"), (1980, 200))
     wf.link("Cancel old + schedule new", "Move deal stage")
 
     code(wf, "Messages to send now", r"""
@@ -949,7 +951,7 @@ return { json: {
 WITH paused AS (
   UPDATE leads SET automation_paused = true, paused_reason = $2, paused_at = now(), updated_at = now()
   WHERE contact_id = $1 AND NOT automation_paused
-  RETURNING id, email, first_name, last_name, phone, company, source
+  RETURNING id, email, first_name, last_name, phone, company, source, qualification, score, reason
 ),
 killed AS (
   UPDATE scheduled_messages SET status = 'cancelled', cancel_reason = $2, done_at = now()
@@ -965,7 +967,8 @@ SELECT (SELECT count(*) FROM paused) AS leads_paused, (SELECT count(*) FROM kill
     P = "$('Pause lead + cancel queue').item.json.lead"
     ghl_hook(wf, "GHL: tag human-takeover", "GHL_HOOK_CONTACT", contact_payload(
         f"{P}.email", f"{P}.first_name", f"{P}.last_name", f"{P}.phone", f"{P}.company", f"{P}.source",
-        "''", extra_tag="'human-takeover'"), (1540, 100))
+        "''", qualification=f"{P}.qualification || ''", score=f"{P}.score ?? ''", reason=f"{P}.reason || ''",
+        extra_tag="'human-takeover'"), (1540, 100))
     code(wf, "Notice: automation paused", r"""
 const m = $('Normalize message').first().json, r = $('Pause lead + cancel queue').first().json;
 return { json: {

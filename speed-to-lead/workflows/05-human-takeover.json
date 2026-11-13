@@ -135,7 +135,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH paused AS (\n  UPDATE leads SET automation_paused = true, paused_reason = $2, paused_at = now(), updated_at = now()\n  WHERE contact_id = $1 AND NOT automation_paused\n  RETURNING id, email, first_name, last_name, phone, company, source\n),\nkilled AS (\n  UPDATE scheduled_messages SET status = 'cancelled', cancel_reason = $2, done_at = now()\n  WHERE contact_id = $1 AND status = 'pending'\n  RETURNING id\n)\nSELECT (SELECT count(*) FROM paused) AS leads_paused, (SELECT count(*) FROM killed) AS messages_cancelled,\n       (SELECT to_jsonb(p) FROM paused p LIMIT 1) AS lead;",
+        "query": "WITH paused AS (\n  UPDATE leads SET automation_paused = true, paused_reason = $2, paused_at = now(), updated_at = now()\n  WHERE contact_id = $1 AND NOT automation_paused\n  RETURNING id, email, first_name, last_name, phone, company, source, qualification, score, reason\n),\nkilled AS (\n  UPDATE scheduled_messages SET status = 'cancelled', cancel_reason = $2, done_at = now()\n  WHERE contact_id = $1 AND status = 'pending'\n  RETURNING id\n)\nSELECT (SELECT count(*) FROM paused) AS leads_paused, (SELECT count(*) FROM killed) AS messages_cancelled,\n       (SELECT to_jsonb(p) FROM paused p LIMIT 1) AS lead;",
         "options": {
           "queryReplacement": "={{ [ $('Normalize message').item.json.contact_id, 'human_reply' ] }}"
         }
@@ -194,7 +194,7 @@
         "url": "={{ $('Load settings').first().json.cfg.GHL_HOOK_CONTACT }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  email: $('Pause lead + cancel queue').item.json.lead.email, first_name: $('Pause lead + cancel queue').item.json.lead.first_name || '', last_name: $('Pause lead + cancel queue').item.json.lead.last_name || '', phone: $('Pause lead + cancel queue').item.json.lead.phone || '',\n  company: $('Pause lead + cancel queue').item.json.lead.company || '', source: $('Pause lead + cancel queue').item.json.lead.source,\n  source_label: ({meta: 'Meta Lead Ad', website: 'Website form', referral: 'Referral'})[$('Pause lead + cancel queue').item.json.lead.source] || $('Pause lead + cancel queue').item.json.lead.source,\n  source_tag: 'source-' + $('Pause lead + cancel queue').item.json.lead.source,\n  stage: '', status: 'open',\n  qualification: '', score: '', reason: '',\n  extra_tag: 'human-takeover'\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  email: $('Pause lead + cancel queue').item.json.lead.email, first_name: $('Pause lead + cancel queue').item.json.lead.first_name || '', last_name: $('Pause lead + cancel queue').item.json.lead.last_name || '', phone: $('Pause lead + cancel queue').item.json.lead.phone || '',\n  company: $('Pause lead + cancel queue').item.json.lead.company || '', source: $('Pause lead + cancel queue').item.json.lead.source,\n  source_label: ({meta: 'Meta Lead Ad', website: 'Website form', referral: 'Referral'})[$('Pause lead + cancel queue').item.json.lead.source] || $('Pause lead + cancel queue').item.json.lead.source,\n  source_tag: 'source-' + $('Pause lead + cancel queue').item.json.lead.source,\n  stage: '', status: 'open',\n  qualification: $('Pause lead + cancel queue').item.json.lead.qualification || '', score: $('Pause lead + cancel queue').item.json.lead.score ?? '', reason: $('Pause lead + cancel queue').item.json.lead.reason || '',\n  extra_tag: 'human-takeover'\n}) }}",
         "options": {
           "timeout": 20000
         }
