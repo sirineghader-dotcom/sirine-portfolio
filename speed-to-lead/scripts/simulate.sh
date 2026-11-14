@@ -31,7 +31,6 @@ meta_lead() {  # Meta Lead Ads webhook shape, with field_data included
   "field_data":[
     {"name":"full_name","values":["Dana Lee"]},
     {"name":"email","values":["$(email_for dana)"]},
-    {"name":"phone_number","values":["+15555550101"]},
     {"name":"company_name","values":["Brightpath Software"]},
     {"name":"job_title","values":["Founder & CEO"]},
     {"name":"company_size","values":["25-50"]},
@@ -51,13 +50,13 @@ case "${1:-}" in
     for _ in 1 2 3; do post stl/lead/meta "$body" & done; wait ;;
   website)
     post stl/lead/website "{\"submission_id\":\"web_$RUN\",\"first_name\":\"Marco\",\"last_name\":\"Ruiz\",
-      \"email\":\"$(email_for marco)\",\"phone\":\"5555550102\",\"company_name\":\"Ruiz Logistics\",
+      \"email\":\"$(email_for marco)\",\"company_name\":\"Ruiz Logistics\",
       \"job_title\":\"Operations Manager\",\"company_size\":\"600+\",\"monthly_budget\":\"\$3,000 - \$5,000\",
       \"timeline\":\"Next quarter\",\"biggest_challenge\":\"Exploring options for the marketing team\",
       \"utm_campaign\":\"google-b2b-lead-gen\"}" ;;
   referral)
     post stl/lead/referral "{\"referral_id\":\"ref_$RUN\",\"first_name\":\"Priya\",\"last_name\":\"Shah\",
-      \"email\":\"$(email_for priya)\",\"phone\":\"5555550103\",\"company_name\":\"Glow Nail Studio\",
+      \"email\":\"$(email_for priya)\",\"company_name\":\"Glow Nail Studio\",
       \"job_title\":\"Owner\",\"company_size\":\"1-5\",\"monthly_budget\":\"Under \$1,000\",\"timeline\":\"ASAP\",
       \"notes\":\"Wants more walk-in customers for her salon\",\"referred_by\":\"Jordan Kim (client)\"}" ;;
   broken)
