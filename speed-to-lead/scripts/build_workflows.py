@@ -20,11 +20,9 @@ PROMPT = (ROOT / "prompts" / "qualification-system-prompt.md").read_text().strip
 
 # Credential stubs. n8n asks you to pick the matching credential on import.
 PG = {"postgres": {"id": "stl-postgres", "name": "STL Postgres"}}
-GHL = {"httpHeaderAuth": {"id": "stl-ghl", "name": "GHL Private Integration"}}
 GEMINI = {"httpHeaderAuth": {"id": "stl-gemini", "name": "Gemini API"}}
 SMTP = {"smtp": {"id": "stl-smtp", "name": "Alerts SMTP"}}
 
-GHL_BASE = "https://services.leadconnectorhq.com"
 CFG = "$('Load settings').first().json.cfg"  # expression prefix for settings
 
 # Sub-workflow placeholders, replaced by deploy_to_n8n.py
@@ -136,25 +134,33 @@ def if_true(wf, name, expr, pos):
     return wf.add(name, "n8n-nodes-base.if", 2, cond_true(expr), pos)
 
 
-def ghl(wf, name, method, path_expr, body_expr, pos, on_error=None, **extra):
+def ghl_hook(wf, name, setting, body_expr, pos, on_error=None, **extra):
+    """POST to a GoHighLevel workflow's Inbound Webhook trigger (URL kept in settings).
+    GHL's own workflow then does the CRM work, so n8n needs no GHL API token."""
     params = {
-        "method": method,
-        "url": "=" + GHL_BASE + path_expr,
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": True,
-        "headerParameters": {"parameters": [
-            {"name": "Version", "value": "2021-07-28"},
-            {"name": "Accept", "value": "application/json"},
-        ]},
+        "method": "POST",
+        "url": "={{ " + CFG + "." + setting + " }}",
+        "sendBody": True, "specifyBody": "json",
+        "jsonBody": expr("JSON.stringify(" + body_expr + ")"),
         "options": {"timeout": 20000},
     }
-    if body_expr:
-        params.update({"sendBody": True, "specifyBody": "json",
-                       "jsonBody": expr("JSON.stringify(" + body_expr + ")")})
     if on_error:
         extra["onError"] = on_error
-    return wf.add(name, "n8n-nodes-base.httpRequest", 4.2, params, pos, GHL, **RETRY, **extra)
+    return wf.add(name, "n8n-nodes-base.httpRequest", 4.2, params, pos, **RETRY, **extra)
+
+
+def contact_payload(email, first, last, phone, company, source, stage, qualification="''", score="''",
+                    reason="''", status="'open'", extra_tag="'sg-stl-lead'"):
+    """The one shape every call to 'SG STL · Update contact & deal' sends, so GHL maps it once."""
+    return f"""{{
+  email: {email}, first_name: {first} || '', last_name: {last} || '', phone: {phone} || '',
+  company: {company} || '', source: {source},
+  source_label: ({{meta: 'Meta Lead Ad', website: 'Website form', referral: 'Referral'}})[{source}] || {source},
+  source_tag: 'source-' + {source},
+  stage: {stage}, status: {status},
+  qualification: {qualification}, score: {score}, reason: {reason},
+  extra_tag: {extra_tag}
+}}"""
 
 
 def run_sub(wf, name, target, pos, **extra):
@@ -280,6 +286,8 @@ if (l.phone) {
   l.phone = d;
 }
 l.valid = Boolean(l.email || l.phone);
+// GHL matches contacts by email (then phone); we use the same value as our contact key.
+l.contact_key = (l.email || l.phone || '').toLowerCase() || null;
 // Same event delivered 3 times -> same key. Provider id when the source has one,
 // otherwise source + contact + day (a same-day resubmit is the same opt-in).
 const day = l.opted_in_at.slice(0, 10);
@@ -318,8 +326,8 @@ return { json: l };
     # Write the lead row before touching GHL: if GHL fails, the watchdog still
     # sees an un-replied lead and alerts.
     sql(wf, "Create lead row", """
-INSERT INTO leads (event_key, source, first_name, last_name, email, phone, company, answers, opted_in_at)
-SELECT p->>'event_key', p->>'source', p->>'first_name', p->>'last_name', p->>'email', p->>'phone',
+INSERT INTO leads (event_key, source, contact_id, first_name, last_name, email, phone, company, answers, opted_in_at)
+SELECT p->>'event_key', p->>'source', p->>'contact_key', p->>'first_name', p->>'last_name', p->>'email', p->>'phone',
        p->>'company', p->'answers', (p->>'opted_in_at')::timestamptz
 FROM (SELECT $1::jsonb AS p) i
 ON CONFLICT (event_key) DO UPDATE SET updated_at = now()
@@ -329,23 +337,10 @@ RETURNING id AS lead_id;
     wf.chain("First time we see it?", "Create lead row", "Load settings")
 
     L = "$('Validate + build event key').item.json"
-    ghl(wf, "Upsert GHL contact", "POST", "/contacts/upsert", f"""{{
-  locationId: {CFG}.GHL_LOCATION_ID,
-  firstName: {L}.first_name, lastName: {L}.last_name,
-  email: {L}.email, phone: {L}.phone, companyName: {L}.company, website: {L}.website,
-  source: ({{meta: 'Meta Lead Ad', website: 'Website form', referral: 'Referral'}})[{L}.source],
-  tags: ['stl-lead', 'source-' + {L}.source]
-}}""", (1760, 200))
-    ghl(wf, "Open deal in New Lead", "POST", "/opportunities/upsert", f"""{{
-  locationId: {CFG}.GHL_LOCATION_ID,
-  pipelineId: {CFG}.GHL_PIPELINE_ID,
-  pipelineStageId: {CFG}.STAGE_NEW_LEAD,
-  contactId: $json.contact.id,
-  name: ({L}.company || {L}.first_name || 'New lead') + ' · ' + {L}.source,
-  status: 'open',
-  source: {L}.source
-}}""", (1980, 200))
-    wf.chain("Load settings", "Upsert GHL contact", "Open deal in New Lead")
+    ghl_hook(wf, "GHL: create contact + deal", "GHL_HOOK_CONTACT", contact_payload(
+        f"{L}.email", f"{L}.first_name", f"{L}.last_name", f"{L}.phone", f"{L}.company", f"{L}.source",
+        "'new_lead'"), (1760, 200))
+    wf.chain("Load settings", "GHL: create contact + deal")
 
     # ---- AI qualification (Gemini Interactions API, structured JSON output, free tier)
     schema = {
@@ -377,7 +372,7 @@ RETURNING id AS lead_id;
         "jsonBody": expr("JSON.stringify(" + body + ")"),
         "options": {"timeout": 90000},
     }, (2200, 200), GEMINI, **RETRY, onError="continueRegularOutput")
-    wf.link("Open deal in New Lead", "Gemini: qualify lead")
+    wf.link("GHL: create contact + deal", "Gemini: qualify lead")
 
     code(wf, "Parse + guardrails", r"""
 // Never trust the model blindly: validate, then make the label agree with the score.
@@ -411,9 +406,8 @@ const lead = $('Validate + build event key').item.json;
 return { json: {
   ...out, ai_error: aiError,
   lead_id: $('Create lead row').item.json.lead_id,
-  contact_id: $('Upsert GHL contact').item.json.contact.id,
-  opportunity_id: $('Open deal in New Lead').item.json.opportunity?.id || $('Open deal in New Lead').item.json.id,
-  source: lead.source, first_name: lead.first_name, email: lead.email, phone: lead.phone, company: lead.company,
+  contact_id: lead.contact_key,
+  source: lead.source, last_name: lead.last_name, first_name: lead.first_name, email: lead.email, phone: lead.phone, company: lead.company,
 }};
 """, (2420, 200), each=True)
     wf.link("Gemini: qualify lead", "Parse + guardrails")
@@ -429,7 +423,6 @@ return { json: {
 
     sql(wf, "Save qualification", """
 UPDATE leads SET
-  contact_id = p->>'contact_id', opportunity_id = p->>'opportunity_id',
   qualification = p->>'classification', score = (p->>'score')::int, reason = p->>'reason',
   stage = CASE p->>'classification' WHEN 'qualified' THEN 'qualified_link_sent'
                                     WHEN 'not_qualified' THEN 'not_qualified' ELSE 'needs_review' END,
@@ -441,25 +434,13 @@ RETURNING id AS lead_id;
     wf.link("Parse + guardrails", "Save qualification")
 
     Q = "$('Parse + guardrails').item.json"
-    ghl(wf, "Write score to contact", "PUT", f"/contacts/{{{{ {Q}.contact_id }}}}", f"""{{
-  customFields: [
-    {{ key: 'lead_score', field_value: {Q}.score }},
-    {{ key: 'qualification', field_value: {Q}.classification }},
-    {{ key: 'qualification_reason', field_value: {Q}.reason }},
-    {{ key: 'lead_source', field_value: {Q}.source }}
-  ]
-}}""", (2860, 200))
-    ghl(wf, "Tag qualification", "POST", f"/contacts/{{{{ {Q}.contact_id }}}}/tags",
-        f"{{ tags: ['ai-' + {Q}.classification.replace('_', '-')] }}", (3080, 200))
-    ghl(wf, "Move deal to result stage", "PUT", f"/opportunities/{{{{ {Q}.opportunity_id }}}}", f"""{{
-  pipelineStageId: ({{
-    qualified: {CFG}.STAGE_QUALIFIED_LINK_SENT,
-    not_qualified: {CFG}.STAGE_NOT_QUALIFIED,
-    needs_review: {CFG}.STAGE_NEEDS_REVIEW
-  }})[{Q}.classification],
-  status: {Q}.classification === 'not_qualified' ? 'lost' : 'open'
-}}""", (3300, 200))
-    wf.chain("Save qualification", "Write score to contact", "Tag qualification", "Move deal to result stage")
+    ghl_hook(wf, "GHL: score + move deal", "GHL_HOOK_CONTACT", contact_payload(
+        f"{Q}.email", f"{Q}.first_name", f"{Q}.last_name", f"{Q}.phone", f"{Q}.company", f"{Q}.source",
+        f"({{ qualified: 'qualified_link_sent', not_qualified: 'not_qualified', needs_review: 'needs_review' }})[{Q}.classification]",
+        qualification=f"{Q}.classification", score=f"{Q}.score", reason=f"{Q}.reason",
+        status=f"{Q}.classification === 'not_qualified' ? 'lost' : 'open'",
+        extra_tag=f"'ai-' + {Q}.classification.replace('_', '-')"), (2860, 200))
+    wf.chain("Save qualification", "GHL: score + move deal")
 
     code(wf, "Pick first reply", r"""
 // Qualified -> booking link by SMS and email. Not qualified -> one polite email
@@ -470,7 +451,14 @@ const plan = {
   not_qualified: [['Email', 'intake_not_qualified_email'], ['SMS', 'intake_not_qualified_sms']],
   needs_review:  [['SMS', 'intake_review_sms'], ['Email', 'intake_review_email']],
 }[q.classification];
-const can = { SMS: !!q.phone, Email: !!q.email };
+// SMS_ENABLED = 'false' (no phone number in GHL): an SMS step is dropped when an
+// email of the same step goes out at the same time, otherwise it is sent as an email.
+const smsOn = String($('Load settings').first().json.cfg.SMS_ENABLED) !== 'false';
+const base = k => k.replace(/_(sms|email)$/, '');
+const channelFix = list => smsOn ? list : list
+  .filter(m => !(m.channel === 'SMS' && list.some(o => o.channel === 'Email' && base(o.template_key) === base(m.template_key))))
+  .map(m => (m.channel === 'SMS' ? { ...m, channel: 'Email' } : m));
+const can = { SMS: !!q.phone && smsOn, Email: !!q.email };
 let picks = plan.filter(([ch]) => can[ch]);
 if (q.classification === 'not_qualified') picks = picks.slice(0, 1);
 return picks.map(([channel, template_key]) => ({ json: {
@@ -479,7 +467,7 @@ return picks.map(([channel, template_key]) => ({ json: {
 }}));
 """, (3520, 200))
     run_sub(wf, "Send first reply", WF_SEND, (3740, 200))
-    wf.chain("Move deal to result stage", "Pick first reply", "Send first reply")
+    wf.chain("GHL: score + move deal", "Pick first reply", "Send first reply")
 
     code(wf, "Check first reply went out", r"""
 const results = $input.all().map(i => i.json);
@@ -505,9 +493,11 @@ return [{ json: { ok, lead_id: q.lead_id, classification: q.classification, resu
 INSERT INTO scheduled_messages (lead_id, contact_id, sequence, template_key, channel, send_at, dedupe_key)
 SELECT l.id, l.contact_id, 'chase', s.template_key, s.channel, now() + s.delay, l.id || ':' || s.template_key
 FROM leads l
-JOIN (VALUES ('chase_1_sms',   'SMS',   interval '4 hours'),
-             ('chase_2_email', 'Email', interval '1 day'),
-             ('chase_3_sms',   'SMS',   interval '3 days')) AS s(template_key, channel, delay) ON true
+CROSS JOIN (SELECT COALESCE((SELECT value FROM settings WHERE key = 'SMS_ENABLED'), 'true') <> 'false' AS sms_on) cfg
+JOIN LATERAL (SELECT v.template_key, CASE WHEN v.channel = 'SMS' AND NOT cfg.sms_on THEN 'Email' ELSE v.channel END AS channel, v.delay
+      FROM (VALUES ('chase_1_sms',   'SMS',   interval '4 hours'),
+                   ('chase_2_email', 'Email', interval '1 day'),
+                   ('chase_3_sms',   'SMS',   interval '3 days')) AS v(template_key, channel, delay)) AS s ON true
 WHERE l.id = $1::uuid
   AND ((s.channel = 'SMS' AND l.phone IS NOT NULL) OR (s.channel = 'Email' AND l.email IS NOT NULL))
 ON CONFLICT (dedupe_key) DO NOTHING;
@@ -550,7 +540,8 @@ ins AS (
 SELECT EXISTS (SELECT 1 FROM ins) AS reserved,
        COALESCE((SELECT automation_paused FROM lead), false) AS paused,
        (SELECT p FROM i) AS input,
-       (SELECT jsonb_build_object('first_name', first_name, 'company', company, 'source', source) FROM lead) AS lead,
+       (SELECT jsonb_build_object('first_name', first_name, 'last_name', last_name, 'email', email, 'phone', phone,
+                                  'company', company, 'source', source) FROM lead) AS lead,
        (SELECT jsonb_build_object('start_time', a.start_time) FROM appointments a, i
          WHERE a.appointment_id = i.p->>'appointment_id') AS appointment;
 """, (440, 200), args="[ JSON.stringify($('When called by another workflow').item.json) ]")
@@ -608,31 +599,37 @@ const T = {
 const t = T[input.template_key];
 if (!t) throw new Error(`Unknown template_key ${input.template_key}`);
 const isEmail = input.channel === 'Email';
-const body = isEmail
-  ? { type: 'Email', contactId: input.contact_id, subject: t[0], html: t[1] }
-  : { type: 'SMS', contactId: input.contact_id, message: t };
+// An SMS template sent by email (SMS turned off): same words, a subject, no STOP line.
+const asEmail = Array.isArray(t) ? t : [
+  { chase: `Your strategy call with ${brand}`, booking: `Your ${brand} strategy call`, reminder: `Reminder: your ${brand} call`,
+    cancel: `Want a new time, ${name}?`, noshow: `Sorry we missed you, ${name}`, intake: `Thanks for reaching out, ${name}` }[input.template_key.split('_')[0]] || brand,
+  `<p>${t.replace(/ Reply STOP to opt out\.?$/, '').replace(/(https?:\/\/\S+?)([.,!?]?)(?=\s|$)/g, '<a href="$1">$1</a>$2')}</p><p>The ${brand} team</p>`,
+];
+// Payload for the GHL workflow "SG STL · Send email": it sends the message, then calls
+// back /stl/ghl-ack with dedupe_key, which is when the message counts as sent.
+const body = {
+  email: lead.email || '', phone: lead.phone || '', first_name: lead.first_name || '', last_name: lead.last_name || '',
+  channel: input.channel, template_key: input.template_key, dedupe_key: input.dedupe_key,
+  subject: isEmail ? asEmail[0] : '', html: isEmail ? asEmail[1] : '', sms_text: isEmail ? '' : t,
+};
 return { json: { input, body } };
 """, (880, 200), each=True)
     wf.link("Reserved?", "Render template")
 
-    ghl(wf, "Send via GHL", "POST", "/conversations/messages", "$json.body", (1100, 200),
-        on_error="continueErrorOutput")
-    wf.link("Render template", "Send via GHL")
+    ghl_hook(wf, "Hand to GHL (Send email)", "GHL_HOOK_EMAIL", "$json.body", (1100, 200),
+             on_error="continueErrorOutput")
+    wf.link("Render template", "Hand to GHL (Send email)")
 
-    sql(wf, "Mark sent + stamp first reply", """
-WITH s AS (
-  UPDATE sent_messages SET status = 'sent', sent_at = now(), ghl_message_id = $2
-  WHERE dedupe_key = $1 RETURNING lead_id
-)
-UPDATE leads SET first_reply_at = COALESCE(first_reply_at, now()), updated_at = now()
-WHERE id = (SELECT lead_id FROM s)
-RETURNING id;
-""", (1320, 100), args="[ $('Render template').item.json.input.dedupe_key, $json.messageId || $json.emailMessageId || $json.id || null ]")
+    # GHL accepted the job. It only counts as sent when GHL calls back (workflow 10);
+    # if that never happens the watchdog alerts after 10 minutes.
+    sql(wf, "Mark handed to GHL", """
+UPDATE sent_messages SET handed_at = now() WHERE dedupe_key = $1 RETURNING dedupe_key;
+""", (1320, 100), args="[ $('Render template').item.json.input.dedupe_key ]")
     code(wf, "Result: sent", r"""
 return { json: { ...$('Render template').item.json.input, sent: true } };
 """, (1540, 100), each=True)
-    wf.link("Send via GHL", "Mark sent + stamp first reply", out=0)
-    wf.link("Mark sent + stamp first reply", "Result: sent")
+    wf.link("Hand to GHL (Send email)", "Mark handed to GHL", out=0)
+    wf.link("Mark handed to GHL", "Result: sent")
 
     # Failure path: never retried automatically (GHL might have sent it before
     # timing out, and a double send is worse than a delay). A human is alerted.
@@ -641,14 +638,14 @@ UPDATE sent_messages SET status = 'failed', error = $2 WHERE dedupe_key = $1 RET
 """, (1320, 320), args="[ $('Render template').item.json.input.dedupe_key, JSON.stringify($json.error || $json).slice(0, 2000) ]")
     code(wf, "Alert: send failed", alert_item(
         "critical",
-        "`GHL refused ${$('Render template').item.json.input.channel} \"${$('Render template').item.json.input.template_key}\" for contact ${$('Render template').item.json.input.contact_id}. Not retried automatically to avoid a double send.`",
+        "`GHL did not accept ${$('Render template').item.json.input.channel} \"${$('Render template').item.json.input.template_key}\" for contact ${$('Render template').item.json.input.contact_id}. Not retried automatically to avoid a double send.`",
         "'send_failed:' + $('Render template').item.json.input.dedupe_key",
         "$('Render template').item.json.input"), (1540, 320), each=True)
     run_sub(wf, "Send alert", WF_ALERT, (1760, 320))
     code(wf, "Result: failed", r"""
 return { json: { ...$('Render template').item.json.input, sent: false, reason: 'send_failed' } };
 """, (1980, 320), each=True)
-    wf.link("Send via GHL", "Mark failed", out=1)
+    wf.link("Hand to GHL (Send email)", "Mark failed", out=1)
     wf.chain("Mark failed", "Alert: send failed", "Send alert", "Result: failed")
     wf.dump()
 
@@ -668,9 +665,18 @@ const raw = String(a.appointmentStatus || a.appoinmentStatus || a.status || b.st
 let status = { confirmed: 'booked', booked: 'booked', new: 'booked', cancelled: 'cancelled', canceled: 'cancelled',
                noshow: 'noshow', 'no_show': 'noshow', 'no-show': 'noshow', showed: 'showed', invalid: 'cancelled' }[raw];
 if (b.type === 'AppointmentDelete') status = 'cancelled';
-const id = a.id || a.appointmentId || b.appointment_id;
-const contact = a.contactId || b.contact_id || b.contactId;
-const start = new Date(a.startTime || a.start_time || b.start_time).toISOString();
+// In a GHL workflow webhook, calendar.id is the CALENDAR; the appointment is calendar.appointmentId.
+const id = a.appointmentId || (b.appointment && b.appointment.id) || b.appointment_id;
+// Our contact key is the lead's email (or phone), the same value GHL matches contacts on.
+const email = b.email || b.contact?.email || a.email;
+const contact = String(email || b.phone || b.contact?.phone || a.contactId || b.contact_id || b.contactId || '').toLowerCase();
+// Workflow webhooks send local wall time without an offset ("2026-11-16T08:00:00") plus the
+// booker's timezone; read it in that zone, then store UTC.
+const rawStart = String(a.startTime || a.start_time || b.start_time || '');
+const tz = a.selectedTimezone || b.timezone || 'UTC';
+const start = /(Z|[+-]\d\d:?\d\d)$/.test(rawStart)
+  ? new Date(rawStart).toISOString()
+  : DateTime.fromISO(rawStart, { zone: tz }).toUTC().toISO();
 const eventAt = new Date(a.dateUpdated || b.dateUpdated || b.event_at || Date.now()).toISOString();
 if (!id || !contact || !status) throw new Error(`Unrecognised appointment payload: ${JSON.stringify(b).slice(0, 500)}`);
 return { json: {
@@ -711,7 +717,8 @@ up AS (
   RETURNING *
 )
 SELECT up.appointment_id, up.contact_id, up.lead_id, up.start_time, up.version, up.status,
-       l.opportunity_id, l.automation_paused,
+       l.automation_paused, l.email, l.first_name, l.last_name, l.phone, l.company, l.source,
+       l.qualification, l.score, l.reason,
        CASE
          WHEN up.appointment_id IS NULL                     THEN 'stale'
          WHEN up.lead_id IS NULL                            THEN 'unknown_lead'
@@ -774,12 +781,19 @@ const P = {
   showed: { stage: 'STAGE_SHOWED', lead_stage: 'showed', cancel: ['chase', 'rebook', 'reminder'], why: 'showed', now: [], later: [] },
 }[a.action];
 
+// SMS_ENABLED = 'false' (no phone number in GHL): an SMS step is dropped when an
+// email of the same step goes out at the same time, otherwise it is sent as an email.
+const smsOn = String($('Load settings').first().json.cfg.SMS_ENABLED) !== 'false';
+const base = k => k.replace(/_(sms|email)$/, '');
+const channelFix = list => smsOn ? list : list
+  .filter(m => !(m.channel === 'SMS' && list.some(o => o.channel === 'Email' && base(o.template_key) === base(m.template_key))))
+  .map(m => (m.channel === 'SMS' ? { ...m, channel: 'Email' } : m));
 const chan = t => (t.endsWith('_sms') ? 'SMS' : 'Email');
 return { json: {
   ...a, plan: {
     stage_key: P.stage, lead_stage: P.lead_stage, cancel: P.cancel, why: P.why,
-    later: P.later.map(m => ({ ...m, dedupe_key: key(m.template_key) })),
-    now: P.now.map(t => ({ template_key: t, channel: chan(t), dedupe_key: key(t) })),
+    later: channelFix(P.later).map(m => ({ ...m, dedupe_key: key(m.template_key) })),
+    now: channelFix(P.now.map(t => ({ template_key: t, channel: chan(t) }))).map(m => ({ ...m, dedupe_key: key(m.template_key) })),
   },
 }};
 """, (1540, 200), each=True)
@@ -834,10 +848,10 @@ SELECT (SELECT count(*) FROM killed) AS cancelled_count,
     wf.link("Plan: stage, cancels, new messages", "Cancel old + schedule new")
 
     A = "$('Plan: stage, cancels, new messages').item.json"
-    ghl(wf, "Move deal stage", "PUT", f"/opportunities/{{{{ {A}.opportunity_id }}}}", f"""{{
-  pipelineStageId: {CFG}[{A}.plan.stage_key],
-  status: 'open'
-}}""", (1980, 200))
+    ghl_hook(wf, "Move deal stage", "GHL_HOOK_CONTACT", contact_payload(
+        f"{A}.email", f"{A}.first_name", f"{A}.last_name", f"{A}.phone", f"{A}.company", f"{A}.source",
+        f"{A}.plan.lead_stage", qualification=f"{A}.qualification || ''", score=f"{A}.score ?? ''",
+        reason=f"{A}.reason || ''"), (1980, 200))
     wf.link("Cancel old + schedule new", "Move deal stage")
 
     code(wf, "Messages to send now", r"""
@@ -913,16 +927,22 @@ def conversations():
     wf = WF("STL 05 · Human takeover + replies", "05-human-takeover")
     webhook(wf, "GHL message webhook", "stl/message", (0, 200))
     code(wf, "Normalize message", r"""
-// GHL OutboundMessage / InboundMessage webhooks (marketplace app or workflow relay).
+// Sent by the GHL workflows "SG STL · Team replied" (trigger: User replied) and
+// "SG STL · Lead replied" (trigger: Customer replied), each with custom data kind.
+// "User replied" fires only for a person on the team, never for workflow emails.
 const b = $json.body || {};
-const direction = String(b.direction || (b.type === 'InboundMessage' ? 'inbound' : 'outbound')).toLowerCase();
-const id = b.messageId || b.message_id || b.id;
-if (!id || !b.contactId && !b.contact_id) throw new Error(`Unrecognised message payload: ${JSON.stringify(b).slice(0, 500)}`);
+const cd = b.customData || b.custom_data || {};
+let kind = cd.kind || b.kind;
+if (!kind && b.direction) kind = String(b.direction).toLowerCase() === 'inbound' ? 'lead_reply' : 'human_reply';
+const msg = b.message || {};
+const contact = String(b.email || b.contact?.email || b.phone || b.contact_id || b.contactId || '').toLowerCase();
+if (!['human_reply', 'lead_reply'].includes(kind) || !contact)
+  throw new Error(`Unrecognised reply payload: ${JSON.stringify(b).slice(0, 500)}`);
+const id = msg.id || b.messageId || b.message_id || new Date().toISOString().slice(0, 16); // else: same minute = same event
 return { json: {
-  message_id: id, contact_id: b.contactId || b.contact_id, direction,
-  user_id: b.userId || b.user_id || null, channel: b.messageType || b.channel || null,
-  body: String(b.body || b.message || '').slice(0, 500),
-  event_key: `msg:${id}`,
+  kind, contact_id: contact, channel: msg.type || b.messageType || null,
+  body: String(msg.body || b.body || cd.message || '').slice(0, 500),
+  event_key: `msg:${kind}:${contact}:${id}`,
 }};
 """, (220, 200), each=True)
     claim_event(wf, "Claim event (dedupe)", "message", (440, 200))
@@ -931,28 +951,14 @@ return { json: {
     wf.chain("GHL message webhook", "Normalize message", "Claim event (dedupe)", "First time we see it?")
     wf.link("First time we see it?", "Duplicate: stop here", out=1)
     M = "$('Normalize message').item.json"
-    if_true(wf, "Outbound?", f"{M}.direction === 'outbound'", (880, 200))
-    wf.link("First time we see it?", "Outbound?")
-
-    # Our own sends also come back as OutboundMessage. Give the ledger a moment
-    # to store GHL's messageId, then check whose message it was.
-    wf.add("Wait 20s for ledger", "n8n-nodes-base.wait", 1.1, {"amount": 20, "unit": "seconds"}, (1100, 100),
-           webhookId=_id("wait20"))
-    sql(wf, "Was it sent by automation?", """
-SELECT EXISTS (SELECT 1 FROM sent_messages WHERE ghl_message_id = $1) AS ours,
-       EXISTS (SELECT 1 FROM sent_messages WHERE contact_id = $2 AND status = 'reserved'
-               AND reserved_at > now() - interval '2 minutes') AS send_in_flight,
-       (SELECT id FROM leads WHERE contact_id = $2 ORDER BY opted_in_at DESC LIMIT 1) AS lead_id;
-""", (1320, 100), args=f"[ {M}.message_id, {M}.contact_id ]")
-    if_true(wf, "Human sent it?",
-            f"!$json.ours && !!$json.lead_id && (!$json.send_in_flight || !!{M}.user_id)", (1540, 100))
-    wf.chain("Outbound?", "Wait 20s for ledger", "Was it sent by automation?", "Human sent it?")
+    if_true(wf, "Team member replied?", f"{M}.kind === 'human_reply'", (880, 200))
+    wf.link("First time we see it?", "Team member replied?")
 
     sql(wf, "Pause lead + cancel queue", """
 WITH paused AS (
   UPDATE leads SET automation_paused = true, paused_reason = $2, paused_at = now(), updated_at = now()
   WHERE contact_id = $1 AND NOT automation_paused
-  RETURNING id, first_name, company, source
+  RETURNING id, email, first_name, last_name, phone, company, source, qualification, score, reason
 ),
 killed AS (
   UPDATE scheduled_messages SET status = 'cancelled', cancel_reason = $2, done_at = now()
@@ -960,25 +966,31 @@ killed AS (
   RETURNING id
 )
 SELECT (SELECT count(*) FROM paused) AS leads_paused, (SELECT count(*) FROM killed) AS messages_cancelled,
-       (SELECT jsonb_agg(paused) FROM paused) AS leads;
-""", (1760, 100), args=f"[ {M}.contact_id, 'human_reply' ]")
-    wf.link("Human sent it?", "Pause lead + cancel queue")
-    ghl(wf, "Tag human-takeover", "POST", f"/contacts/{{{{ {M}.contact_id }}}}/tags",
-        "{ tags: ['human-takeover'] }", (1980, 100))
+       (SELECT to_jsonb(p) FROM paused p LIMIT 1) AS lead;
+""", (1100, 100), args=f"[ {M}.contact_id, 'human_reply' ]")
+    wf.link("Team member replied?", "Pause lead + cancel queue")
+    if_true(wf, "One of our leads?", "Number($json.leads_paused) > 0", (1320, 100))
+    wf.link("Pause lead + cancel queue", "One of our leads?")
+    P = "$('Pause lead + cancel queue').item.json.lead"
+    ghl_hook(wf, "GHL: tag human-takeover", "GHL_HOOK_CONTACT", contact_payload(
+        f"{P}.email", f"{P}.first_name", f"{P}.last_name", f"{P}.phone", f"{P}.company", f"{P}.source",
+        "''", qualification=f"{P}.qualification || ''", score=f"{P}.score ?? ''", reason=f"{P}.reason || ''",
+        extra_tag="'human-takeover'"), (1540, 100))
     code(wf, "Notice: automation paused", r"""
 const m = $('Normalize message').first().json, r = $('Pause lead + cancel queue').first().json;
 return { json: {
   severity: 'info', workflow: $workflow.name, node: 'Notice: automation paused',
-  message: `A team member replied to contact ${m.contact_id}. Automation is now OFF for this lead and ${r.messages_cancelled} queued message(s) were cancelled.`,
+  message: `A team member replied to ${m.contact_id}. Automation is now OFF for this lead and ${r.messages_cancelled} queued message(s) were cancelled.`,
   alert_key: 'takeover:' + m.contact_id, execution_id: $execution.id, context: { contact_id: m.contact_id },
 }};
-""", (2200, 100), each=True)
-    run_sub(wf, "Send notice", WF_ALERT, (2420, 100))
-    wf.chain("Pause lead + cancel queue", "Tag human-takeover", "Notice: automation paused", "Send notice")
+""", (1760, 100), each=True)
+    run_sub(wf, "Send notice", WF_ALERT, (1980, 100))
+    load_settings(wf, (1430, 0))
+    wf.chain("One of our leads?", "Load settings", "GHL: tag human-takeover", "Notice: automation paused", "Send notice")
 
-    # Inbound: an opt-out word stops everything; any other reply pings the team.
+    # The lead replied: an opt-out word stops everything; any other reply pings the team.
     if_true(wf, "Opt-out word?", f"/^\\s*(stop|unsubscribe|cancel|end|quit|stopall)\\s*$/i.test({M}.body)", (1100, 320))
-    wf.link("Outbound?", "Opt-out word?", out=1)
+    wf.link("Team member replied?", "Opt-out word?", out=1)
     sql(wf, "Pause lead (opted out)", """
 WITH paused AS (
   UPDATE leads SET automation_paused = true, paused_reason = 'opted_out', paused_at = now()
@@ -992,13 +1004,52 @@ WHERE contact_id = $1 AND status = 'pending' RETURNING id;
 const m = $('Normalize message').first().json;
 return { json: {
   severity: 'info', workflow: $workflow.name, node: 'Notice: lead replied',
-  message: `Lead ${m.contact_id} replied by ${m.channel || 'message'}: "${m.body}". Reply in GHL; your reply pauses the automation for them.`,
-  alert_key: 'reply:' + m.message_id, execution_id: $execution.id, context: { contact_id: m.contact_id },
+  message: `Lead ${m.contact_id} replied${m.channel ? ' by ' + m.channel : ''}: "${m.body}". Reply in GHL; your reply pauses the automation for them.`,
+  alert_key: m.event_key ? 'reply:' + m.event_key : null, execution_id: $execution.id, context: { contact_id: m.contact_id },
 }};
 """, (1320, 440), each=True)
     run_sub(wf, "Send reply notice", WF_ALERT, (1540, 440))
     wf.link("Opt-out word?", "Notice: lead replied", out=1)
     wf.link("Notice: lead replied", "Send reply notice")
+    wf.dump()
+
+
+# =====================================================================
+# 10 GHL confirmations: a message counts as sent when GHL says so
+# =====================================================================
+def ghl_ack():
+    wf = WF("STL 10 · GHL send confirmations", "10-ghl-ack")
+    webhook(wf, "GHL confirmation webhook", "stl/ghl-ack", (0, 200))
+    code(wf, "Read dedupe key", r"""
+// Called by the last action of the GHL workflow "SG STL · Send email" (Webhook,
+// custom data dedupe_key = the value n8n sent it).
+const b = $json.body || {};
+const key = (b.customData || b.custom_data || {}).dedupe_key || b.dedupe_key;
+if (!key) throw new Error(`Confirmation without dedupe_key: ${JSON.stringify(b).slice(0, 500)}`);
+return { json: { dedupe_key: String(key) } };
+""", (220, 200), each=True)
+    sql(wf, "Mark sent + stamp first reply", """
+-- Idempotent: a repeated confirmation changes nothing.
+WITH s AS (
+  UPDATE sent_messages SET status = 'sent', sent_at = COALESCE(sent_at, now())
+  WHERE dedupe_key = $1 RETURNING lead_id
+),
+l AS (
+  UPDATE leads SET first_reply_at = COALESCE(first_reply_at, now()), updated_at = now()
+  WHERE id = (SELECT lead_id FROM s)
+  RETURNING id
+)
+SELECT (SELECT count(*) FROM s) AS confirmed;
+""", (440, 200), args="[ $json.dedupe_key ]")
+    if_true(wf, "Known message?", "Number($json.confirmed) > 0", (660, 200))
+    noop(wf, "Confirmed", (880, 100))
+    code(wf, "Alert: unknown confirmation", alert_item(
+        "warning", "`GHL confirmed a message n8n has no record of (${$('Read dedupe key').item.json.dedupe_key}). Check the Send email workflow in GHL.`",
+        "'unknown_ack:' + $('Read dedupe key').item.json.dedupe_key", "{}"), (880, 300), each=True)
+    run_sub(wf, "Send alert", WF_ALERT, (1100, 300))
+    wf.chain("GHL confirmation webhook", "Read dedupe key", "Mark sent + stamp first reply", "Known message?", "Confirmed")
+    wf.link("Known message?", "Alert: unknown confirmation", out=1)
+    wf.link("Alert: unknown confirmation", "Send alert")
     wf.dump()
 
 
@@ -1158,6 +1209,6 @@ SELECT jsonb_build_object(
 
 if __name__ == "__main__":
     for build in (lead_intake, send_message, appointments, scheduler, conversations,
-                  alert, error_handler, watchdog, dashboard_api):
+                  alert, error_handler, watchdog, dashboard_api, ghl_ack):
         build()
     print("wrote", sorted(p.name for p in OUT.glob("*.json")))

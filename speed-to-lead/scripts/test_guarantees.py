@@ -100,11 +100,12 @@ def appt_event(conn, appt, contact, status, start, event_at):
     return a["action"], a
 
 
-def reserve(conn, lead_id, contact, template, key):
+def reserve(conn, lead_id, contact, template, key, confirm=True):
     r = run(conn, "02-send-message", "Reserve send slot",
             {"lead_id": lead_id, "contact_id": contact, "channel": "SMS", "template_key": template, "dedupe_key": key})[0]
-    if r["reserved"]:
-        run(conn, "02-send-message", "Mark sent + stamp first reply", key, f"msg-{RUN}-{key}")
+    if r["reserved"] and confirm:
+        run(conn, "02-send-message", "Mark handed to GHL", key)
+        run(conn, "10-ghl-ack", "Mark sent + stamp first reply", key)   # GHL's "sent" callback
     return r
 
 
@@ -123,7 +124,7 @@ def main():
 
     # 1. Same Meta lead delivered 3 times -> processed once
     lead = {"source": "meta", "event_key": f"meta:{RUN}", "first_name": "Dana", "last_name": "Lee",
-            "email": f"dana+{RUN}@acme.io", "phone": "+15555550101", "company": "Acme",
+            "email": f"dana+{RUN}@acme.io", "phone": "+15555550101", "company": "Acme", "contact_key": contact,
             "answers": {"monthly_budget": "$5k-$10k"}, "opted_in_at": now.isoformat()}
     claims = [run(conn, "01-lead-intake", "Claim event (dedupe)", lead["event_key"], lead)[0] for _ in range(3)]
     check("same lead event x3 is processed once", [c["is_new"] for c in claims] == [True, False, False],
@@ -145,7 +146,22 @@ def main():
     check("first reply reserved once out of 3 attempts", [x["reserved"] for x in r] == [True, False, False])
     with conn.cursor() as cur:
         cur.execute("SELECT first_reply_at IS NOT NULL FROM leads WHERE id = %s", (lead_id,))
-        check("first_reply_at stamped on send", cur.fetchone()[0])
+        check("first_reply_at stamped when GHL confirms the send", cur.fetchone()[0])
+    again = run(conn, "10-ghl-ack", "Mark sent + stamp first reply", f"{lead_id}:intake_qualified_sms")[0]
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM sent_messages WHERE lead_id = %s", (lead_id,))
+        n = cur.fetchone()[0]
+    check("a repeated GHL confirmation changes nothing", again["confirmed"] == 1 and n == 1)
+    # A message GHL accepted but never confirmed is not silent: the watchdog flags it.
+    reserve(conn, lead_id, contact, "intake_qualified_email", f"{lead_id}:unconfirmed", confirm=False)
+    run(conn, "02-send-message", "Mark handed to GHL", f"{lead_id}:unconfirmed")
+    with conn.cursor() as cur:
+        cur.execute("UPDATE sent_messages SET reserved_at = now() - interval '11 minutes' WHERE dedupe_key = %s",
+                    (f"{lead_id}:unconfirmed",))
+    flagged = [r for r in run(conn, "08-watchdog", "Find silent problems") if r["alert_key"] == f"stuck_reserved:{lead_id}:unconfirmed"]
+    check("an email GHL never confirms raises an alert", len(flagged) == 1)
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM sent_messages WHERE dedupe_key = %s", (f"{lead_id}:unconfirmed",))
     run(conn, "01-lead-intake", "Schedule booking chase", lead_id)
     run(conn, "01-lead-intake", "Schedule booking chase", lead_id)
     check("booking chase queued once (3 steps) even if scheduled twice", len(pending(conn, lead_id, "chase")) == 3)
@@ -197,13 +213,10 @@ def main():
           and len(pending(conn, lead_id, "reminder")) == 0)
 
     # 7. A human reply stops everything
-    msg = {"message_id": f"m-{RUN}", "contact_id": contact, "direction": "outbound", "user_id": "u1",
-           "event_key": f"msg:m-{RUN}"}
-    run(conn, "05-human-takeover", "Claim event (dedupe)", msg["event_key"], msg)
-    who = run(conn, "05-human-takeover", "Was it sent by automation?", msg["message_id"], contact)[0]
-    check("a message GHL reports that we did not send is seen as human", not who["ours"] and who["lead_id"])
-    ours = run(conn, "05-human-takeover", "Was it sent by automation?", f"msg-{RUN}-{lead_id}:intake_qualified_sms", contact)[0]
-    check("our own automated message is recognised as ours", ours["ours"])
+    # GHL's "User replied" trigger fires only for a team member, never for workflow emails.
+    msg = {"kind": "human_reply", "contact_id": contact, "event_key": f"msg:human_reply:{contact}:m-{RUN}"}
+    seen = [run(conn, "05-human-takeover", "Claim event (dedupe)", msg["event_key"], msg)[0]["is_new"] for _ in range(2)]
+    check("the same 'team member replied' event is handled once", seen == [True, False], str(seen))
     p = run(conn, "05-human-takeover", "Pause lead + cancel queue", contact, "human_reply")[0]
     check("human reply pauses the lead and cancels its queue", p["leads_paused"] == 1 and p["messages_cancelled"] >= 1,
           f"paused={p['leads_paused']} cancelled={p['messages_cancelled']}")

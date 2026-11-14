@@ -1,0 +1,212 @@
+{
+  "name": "STL 10 \u00b7 GHL send confirmations",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stl/ghl-ack",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "e0a7c48e-c4aa-500a-aee3-a83de2ab3ecc",
+      "name": "GHL confirmation webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "webhookId": "2ed092a0-7f53-5076-a6ec-a3ca4e78ff77"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Called by the last action of the GHL workflow \"SG STL \u00b7 Send email\" (Webhook,\n// custom data dedupe_key = the value n8n sent it).\nconst b = $json.body || {};\nconst key = (b.customData || b.custom_data || {}).dedupe_key || b.dedupe_key;\nif (!key) throw new Error(`Confirmation without dedupe_key: ${JSON.stringify(b).slice(0, 500)}`);\nreturn { json: { dedupe_key: String(key) } };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "b1a8ec52-cc76-5763-b005-c8110dbfad01",
+      "name": "Read dedupe key",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Idempotent: a repeated confirmation changes nothing.\nWITH s AS (\n  UPDATE sent_messages SET status = 'sent', sent_at = COALESCE(sent_at, now())\n  WHERE dedupe_key = $1 RETURNING lead_id\n),\nl AS (\n  UPDATE leads SET first_reply_at = COALESCE(first_reply_at, now()), updated_at = now()\n  WHERE id = (SELECT lead_id FROM s)\n  RETURNING id\n)\nSELECT (SELECT count(*) FROM s) AS confirmed;",
+        "options": {
+          "queryReplacement": "={{ [ $json.dedupe_key ] }}"
+        }
+      },
+      "id": "0dc2bc7a-5176-5d4d-9f69-843e81b22a27",
+      "name": "Mark sent + stamp first reply",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        440,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "stl-postgres",
+          "name": "STL Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "879120f6-e7a4-5fe9-ab00-0489dadd503a",
+              "leftValue": "={{ Number($json.confirmed) > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f1440be5-66f6-54e5-ac3d-d76ac200fc1d",
+      "name": "Known message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f5240437-5242-50b2-bdb7-cfc04a20ff22",
+      "name": "Confirmed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        880,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { json: {\n  severity: 'warning',\n  workflow: $workflow.name,\n  node: $prevNode.name,\n  message: `GHL confirmed a message n8n has no record of (${$('Read dedupe key').item.json.dedupe_key}). Check the Send email workflow in GHL.`,\n  alert_key: 'unknown_ack:' + $('Read dedupe key').item.json.dedupe_key,\n  execution_id: $execution.id,\n  context: {},\n} };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "847b81f1-2fcb-55c3-864e-e75506ce8d80",
+      "name": "Alert: unknown confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "__WF_ALERT__",
+        "options": {}
+      },
+      "id": "cf3bc63e-9f97-527c-ada2-20e34388ca65",
+      "name": "Send alert",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "GHL confirmation webhook": {
+      "main": [
+        [
+          {
+            "node": "Read dedupe key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read dedupe key": {
+      "main": [
+        [
+          {
+            "node": "Mark sent + stamp first reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark sent + stamp first reply": {
+      "main": [
+        [
+          {
+            "node": "Known message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Known message?": {
+      "main": [
+        [
+          {
+            "node": "Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert: unknown confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert: unknown confirmation": {
+      "main": [
+        [
+          {
+            "node": "Send alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "errorWorkflow": "__WF_ERROR_HANDLER__"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "speed-to-lead"
+    }
+  ]
+}
