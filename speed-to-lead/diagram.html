@@ -165,16 +165,16 @@
 
           <!-- outcomes -->
           <rect x="910" y="56" width="270" height="46" rx="8" class="box-good"/>
-          <text x="926" y="76" class="t">Qualified · score 70+</text><text x="926" y="93" class="s">booking link by SMS + email</text>
+          <text x="926" y="76" class="t">Qualified · score 70+</text><text x="926" y="93" class="s">booking link by email in seconds</text>
           <rect x="910" y="126" width="270" height="46" rx="8" class="box"/><rect x="910" y="126" width="6" height="46" rx="3" class="f-warn"/>
-          <text x="926" y="146" class="t">Needs review</text><text x="926" y="163" class="s">holding reply + team pinged in Slack</text>
+          <text x="926" y="146" class="t">Needs review</text><text x="926" y="163" class="s">holding reply + team alerted</text>
           <rect x="910" y="196" width="270" height="46" rx="8" class="box"/><rect x="910" y="196" width="6" height="46" rx="3" class="f-muted"/>
           <text x="926" y="216" class="t">Not qualified</text><text x="926" y="233" class="s">one polite email, deal marked lost</text>
 
           <!-- timing bracket -->
           <path d="M20 268 V 278 H 1180 V 268" class="ln-acc"/>
           <text x="20" y="300" class="l-acc">opt-in</text>
-          <text x="600" y="300" class="l-acc" text-anchor="middle">about 1 minute, day or night, with no person in the loop</text>
+          <text x="600" y="300" class="l-acc" text-anchor="middle">about 15 seconds, day or night, with no person in the loop</text>
           <text x="1180" y="300" class="l-acc" text-anchor="end">first reply</text>
 
           <line x1="20" y1="330" x2="1180" y2="330" class="rule"/>
@@ -225,21 +225,21 @@
           <path d="M830 530 L 918 530" class="ln" marker-end="url(#ah)"/>
           <text x="874" y="520" class="l" text-anchor="middle">starts</text>
           <path d="M830 628 C 880 628, 880 560, 918 552" class="ln" marker-end="url(#ah)"/>
-          <text x="890" y="646" class="l" text-anchor="middle">re-book SMS</text>
+          <text x="890" y="646" class="l" text-anchor="middle">re-book email</text>
           <rect x="920" y="500" width="260" height="60" rx="10" class="box"/>
           <text x="1050" y="525" class="t" text-anchor="middle">Re-book sequence</text>
-          <text x="1050" y="544" class="s" text-anchor="middle">SMS +15m · email +1d · SMS +3d</text>
+          <text x="1050" y="544" class="s" text-anchor="middle">emails at +15m · +1d · +3d</text>
 
           <!-- back to booked -->
           <path d="M1130 560 V 684 H 300 V 508" class="ln-good" marker-end="url(#ah-good)"/>
           <text x="715" y="678" class="l" text-anchor="middle">books a new time · the re-book messages stop</text>
         </svg>
       </div>
-      <figcaption>Top row: everything between the form and the first message, about a minute end to end. Bottom row: what each calendar event does to the deal stage and to the messages queued for the lead.</figcaption>
+      <figcaption>Top row: everything between the form and the first message, about 15 seconds end to end. Bottom row: what each calendar event does to the deal stage and to the messages queued for the lead.</figcaption>
     </figure>
     <ul class="say">
       <li>"A lead comes in from one of three sources, already tagged so we always know where it came from."</li>
-      <li>"Gemini scores it against our ideal client and writes one line on why. Qualified leads get the booking link in about a minute."</li>
+      <li>"Gemini scores it against our ideal client and writes one line on why. Qualified leads get the booking link in seconds."</li>
       <li>"Booked, rescheduled, cancelled and no-show each move the deal to its own stage and start the right messages."</li>
     </ul>
   </section>
@@ -312,7 +312,7 @@
       <figure>
         <h3>A human reply stops all automation</h3>
         <div class="scroll">
-          <svg viewBox="0 0 540 240" role="img" aria-label="A message a team member sends is not in the send ledger, so automation turns off for the lead; the send gate then blocks every queued reminder, chase and re-book.">
+          <svg viewBox="0 0 540 240" role="img" aria-label="When a team member replies, GoHighLevel's User replied trigger tells n8n, so automation turns off for the lead; the send gate then blocks every queued reminder, chase and re-book.">
             <defs>
               <marker id="d-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
               <marker id="d-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-bad"/></marker>
@@ -321,9 +321,9 @@
             <text x="85" y="44" class="t" text-anchor="middle">Team member</text><text x="85" y="62" class="s" text-anchor="middle">replies in GHL</text>
             <path d="M160 48 L 198 48" class="ln" marker-end="url(#d-ah)"/>
             <rect x="200" y="20" width="160" height="56" rx="8" class="box-acc"/>
-            <text x="280" y="44" class="t" text-anchor="middle">Sent by us?</text><text x="280" y="62" class="s" text-anchor="middle">check the send ledger</text>
+            <text x="280" y="44" class="t" text-anchor="middle">User replied</text><text x="280" y="62" class="s" text-anchor="middle">GHL trigger, team only</text>
             <path d="M360 48 L 398 48" class="ln-bad" marker-end="url(#d-bad)"/>
-            <text x="379" y="40" class="l-bad" text-anchor="middle">no</text>
+            <text x="379" y="40" class="l-bad" text-anchor="middle">fires</text>
             <rect x="400" y="20" width="130" height="56" rx="8" class="box-bad"/>
             <text x="465" y="44" class="t" text-anchor="middle">Automation</text><text x="465" y="62" class="l-bad" text-anchor="middle">OFF for this lead</text>
             <!-- queue -->
@@ -346,7 +346,7 @@
       <figure>
         <h3>Every failure alerts you</h3>
         <div class="scroll">
-          <svg viewBox="0 0 540 240" role="img" aria-label="Crashes go to the error handler and quiet problems are found by the watchdog every 5 minutes; both raise one alert by Slack and email. If n8n itself is down, its heartbeat stops and Healthchecks emails you.">
+          <svg viewBox="0 0 540 240" role="img" aria-label="Crashes go to the error handler and quiet problems are found by the watchdog every 5 minutes; both raise one alert by email. If n8n itself is down, its heartbeat stops and Healthchecks emails you.">
             <defs>
               <marker id="e-ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
               <marker id="e-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-bad"/></marker>
@@ -364,7 +364,7 @@
             <path d="M340 112 C 365 112, 365 92, 388 88" class="ln" marker-end="url(#e-ah)"/>
             <path d="M340 192 L 388 192" class="ln" marker-end="url(#e-ah)"/>
             <rect x="390" y="50" width="140" height="62" rx="10" class="box-acc"/>
-            <text x="460" y="76" class="t" text-anchor="middle">Slack + email</text><text x="460" y="96" class="s" text-anchor="middle">once per problem</text>
+            <text x="460" y="76" class="t" text-anchor="middle">Alert email</text><text x="460" y="96" class="s" text-anchor="middle">once per problem</text>
             <rect x="390" y="170" width="140" height="44" rx="10" class="box-acc"/>
             <text x="460" y="197" class="t" text-anchor="middle">Email to you</text>
           </svg>
@@ -376,7 +376,7 @@
       <li>"Watch: I send the same lead three times. One run goes through, two stop, and the lead gets one message."</li>
       <li>"I move the call. The old reminders are cancelled and new ones are queued for the new time."</li>
       <li>"I reply by hand. From now on the automation stays out of this conversation."</li>
-      <li>"And nothing fails quietly. Every problem lands in Slack and my inbox, once."</li>
+      <li>"And nothing fails quietly. Every problem lands in my inbox, once."</li>
     </ul>
   </section>
 </div>

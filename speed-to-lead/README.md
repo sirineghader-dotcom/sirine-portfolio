@@ -5,17 +5,18 @@
 A B2B agency (Northwind Growth, the example client) gets leads from Meta ads, its
 website and referrals. Before this system, replies took hours, about half of booked calls
 no-showed, and nobody knew what a booked call cost. With it, every lead gets a reply in about
-a minute. Gemini qualifies each lead, qualified leads get a booking link, and the system
+about 15 seconds. Gemini qualifies each lead, qualified leads get a booking link, and the system
 reminds and chases them. The owner gets a one-screen scorecard showing which source brings
 the cheapest booked calls.
 
 | Deliverable | Where |
 |---|---|
-| n8n workflows (exported JSON) | [`workflows/`](workflows/) (9 files, import in n8n) |
+| n8n workflows (exported JSON) | [`workflows/`](workflows/) (10 files, import in n8n) |
+| GoHighLevel workflows | 5 workflows built in GHL Automation, described [below](#the-5-gohighlevel-workflows) |
 | Live dashboard | GitHub Pages: `https://sirineghader-dotcom.github.io/sirine-portfolio/speed-to-lead/dashboard/` |
 | Ad spend sheet | [`data/ad-spend.csv`](data/ad-spend.csv) |
 | Database schema | [`sql/schema.sql`](sql/schema.sql) |
-| Proof the guarantees hold | [`scripts/test_guarantees.py`](scripts/test_guarantees.py) (23 checks against real Postgres) |
+| Proof the guarantees hold | [`scripts/test_guarantees.py`](scripts/test_guarantees.py) (24 checks against real Postgres) |
 | Test-lead simulator (for the Loom) | [`scripts/simulate.sh`](scripts/simulate.sh) |
 | Loom script | [below](#loom-script), with diagrams in [`diagram.html`](diagram.html) |
 
@@ -31,40 +32,62 @@ flowchart LR
     R[Referral form]:::src
   end
   M & W & R --> I[01 Lead intake<br/>normalize · dedupe]
-  I --> G[(GoHighLevel<br/>contact + deal)]
   I --> C{Gemini<br/>qualify}
-  C -->|Qualified| Q[Booking link<br/>SMS + email]
+  I -->|Inbound Webhook| GC[GHL workflow<br/>Update contact & deal]
+  C -->|Qualified| Q[Booking link email]
   C -->|Needs review| N[Holding reply<br/>+ team ping]
   C -->|Not qualified| X[Polite email]
-  Q --> S[(Postgres<br/>ledger + queue)]
-  GA[GHL calendar<br/>appointment events] --> A[03 Appointment events]
-  A --> S
-  S --> SCH[04 Scheduler<br/>every minute]
-  SCH --> SEND[02 Send message<br/>the only sender]
-  Q & N & X & A --> SEND
-  SEND --> G
-  GM[GHL message events] --> H[05 Human takeover]
+  Q & N & X --> SEND[02 Send message<br/>the only sender]
+  SEND -->|Inbound Webhook| GE[GHL workflow<br/>Send email]
+  GE -->|sent| ACK[10 GHL confirmations]
+  GA[GHL Appointment Status] --> A[03 Appointment events]
+  A --> GC
+  A --> S[(Postgres<br/>ledger + queue)]
+  S --> SCH[04 Scheduler<br/>every minute] --> SEND
+  GU[GHL User replied /<br/>Customer replied] --> H[05 Human takeover]
   H -->|pause| S
-  WD[08 Watchdog] --> AL[06 Alert<br/>Slack + email]
+  WD[08 Watchdog] --> AL[06 Alert<br/>email]
   ERR[07 Error handler] --> AL
   S --> D[09 Dashboard API] --> DB[Hosted dashboard]
   classDef src fill:#eef4fd,stroke:#2a78d6
 ```
 
-GoHighLevel is the CRM the team works in. A small Postgres database holds the
-system's memory, and that is what makes the hard guarantees hold.
+GoHighLevel is the CRM the team works in. n8n holds the logic and a small Postgres
+database holds the system's memory, which is what makes the hard guarantees hold.
 
-| Workflow | What it does |
+**n8n talks to GoHighLevel through GHL's own Automation, not an API token.** The GHL
+sub-account is shared and does not allow Private Integration tokens, so n8n posts to two
+GHL workflows that start with an *Inbound Webhook* trigger, and GHL workflows post events
+back to n8n with *Webhook* actions. GHL does the CRM clicks (contact, tags, deal stage,
+sending the email); n8n decides what should happen and when.
+
+| n8n workflow | What it does |
 |---|---|
-| `01-lead-intake` | Three webhooks (Meta, website, referral), each tagged with its source. Normalizes the data, dedupes, creates the GHL contact and deal, asks Gemini to qualify, moves the deal and sends the first reply. Also schedules the booking chase. |
-| `02-send-message` | Sub-workflow and the **only** place that messages a lead. Reserves the send in a ledger first, refuses if a human has taken over, then calls GHL. |
+| `01-lead-intake` | Three webhooks (Meta, website, referral), each tagged with its source. Normalizes the data, dedupes, asks GHL to create the contact and deal, asks Gemini to qualify, asks GHL to move the deal and sends the first reply. Also schedules the booking chase. |
+| `02-send-message` | Sub-workflow and the **only** place that messages a lead. Reserves the send in a ledger first, refuses if a human has taken over, then hands the email to GHL. |
 | `03-appointment-events` | GHL calendar events. Works out whether each one is a booking, reschedule, cancellation, no-show or show; moves the deal; kills old reminders; queues new ones. |
 | `04-scheduler` | Every minute: claims due reminders, chases and re-books, re-checks each one is still valid, then sends it. |
-| `05-human-takeover` | GHL message events. A message from a team member pauses all automation for that lead. A STOP reply does the same. Any other lead reply pings the team. |
-| `06-alert` | Sub-workflow: records the alert, then posts to Slack and sends an email. |
+| `05-human-takeover` | A team member's reply (GHL *User replied*) pauses all automation for that lead. A STOP reply from the lead does the same. Any other lead reply pings the team. |
+| `06-alert` | Sub-workflow: records the alert, then emails it (and posts to Slack if configured). |
 | `07-error-handler` | n8n error workflow for every other workflow: any crash becomes an alert. |
-| `08-watchdog` | Every 5 minutes: finds problems that never threw an error (a lead with no reply after 5 min, a stalled scheduler, a send GHL never confirmed, a review waiting over 2 hours). Pings a dead-man's switch. |
+| `08-watchdog` | Every 5 minutes: finds problems that never threw an error (a lead with no reply after 5 min, a stalled scheduler, an email GHL never confirmed, a review waiting over 2 hours). Pings a dead-man's switch. |
 | `09-dashboard-api` | Anonymised per-source data (no names or emails) for the dashboard. |
+| `10-ghl-ack` | GHL's "email sent" callback. A message only counts as sent, and the reply time is only stamped, when GHL confirms it. |
+
+### The 5 GoHighLevel workflows
+
+All in the folder **SG - Speed to Lead** in GHL Automation.
+
+| GHL workflow | Trigger | Actions |
+|---|---|---|
+| SG STL · Update contact & deal | Inbound Webhook (from n8n) | Create/update contact (name, email, company, source, `SG-Lead Score`, `SG-Qualification`, `SG-Qualification Reason`, `SG-Lead Source`) → add the source tag → add the extra tag (AI label or `human-takeover`) → If/Else on `stage` → Create/update opportunity in that stage of **SG- Speed to lead** |
+| SG STL · Send email | Inbound Webhook (from n8n) | Create/update contact → Send Email (subject and HTML body written by n8n) → Webhook to n8n `/stl/ghl-ack` with `dedupe_key` |
+| SG STL · Appointment → n8n | Appointment Status (calendar *SG Free Consultation*) | Webhook to n8n `/stl/appointment` |
+| SG STL · Team replied → n8n | User replied | Webhook to n8n `/stl/message`, custom data `kind = human_reply` |
+| SG STL · Lead replied → n8n | Customer replied | Webhook to n8n `/stl/message`, custom data `kind = lead_reply` |
+
+Leads are matched by email: it is the key GHL uses to find contacts, and the key n8n uses
+in its own tables.
 
 ---
 
@@ -81,9 +104,9 @@ Two independent locks:
   The copies are counted (`hits`) and stop.
 - **Send ledger.** Every message has a dedupe key (`lead:template`, or
   `appointment:version:template`). `02-send-message` reserves that key in `sent_messages`
-  *before* it calls GHL, so a second attempt cannot send. If GHL errors, the message is not
-  retried automatically, because GHL may have sent it before timing out. Instead the team
-  gets an alert.
+  *before* it hands the email to GHL, so a second attempt cannot send. If GHL errors, the
+  message is not retried automatically, because GHL may have sent it before timing out.
+  Instead the team gets an alert.
 - Webhooks answer `200` immediately, so Meta and GHL have no reason to retry.
 
 ### 2. A reschedule or cancel kills the old reminders
@@ -99,23 +122,24 @@ Two independent locks:
 
 ### 3. A human reply stops all automation for that lead
 
-- GHL reports every outbound message. Our own sends are in the ledger with GHL's message
-  id; anything else is a person, so the workflow sets `automation_paused` on the lead,
-  cancels the queue, tags the contact `human-takeover` and tells the team.
+- GHL's **User replied** trigger fires only when a person on the team replies to a contact,
+  never for workflow emails. Its GHL workflow tells n8n, which sets `automation_paused` on
+  the lead, cancels the queue, has GHL tag the contact `human-takeover` and tells the team.
 - Every send re-checks the pause inside the same SQL statement that reserves it, so nothing
   queued earlier can slip out.
-- A reply of STOP (or unsubscribe, end, quit) pauses the lead the same way.
+- A reply of STOP (or unsubscribe, end, quit) from the lead pauses it the same way.
 
 ### 4. Every failure alerts you. No silent errors
 
-- **Crashes:** every workflow names `07-error-handler` as its error workflow, which posts
-  to Slack and sends an email with a link to the failed execution.
+- **Crashes:** every workflow names `07-error-handler` as its error workflow, which sends
+  an email with a link to the failed execution.
 - **Soft failures:** a failed Gemini call parks the lead in Needs Review and still sends a
   reply, then alerts. If GHL refuses a message, the ledger records it and an alert goes out.
   A lead without an email or phone also triggers an alert.
-- **Silent failures:** the watchdog alerts when a lead has had no reply after 5 minutes,
-  when sends are overdue (the scheduler is down), and when a send is stuck. Each problem
-  alerts once, not every 5 minutes.
+- **Silent failures:** an email counts as sent only when GHL's *Send email* workflow calls
+  back. If that confirmation never comes, the watchdog alerts after 10 minutes. It also
+  alerts when a lead has had no reply after 5 minutes and when sends are overdue (the
+  scheduler is down). Each problem alerts once, not every 5 minutes.
 - **n8n itself down:** the watchdog pings a Healthchecks.io check every 5 minutes. If the
   pings stop, Healthchecks emails you.
 - Alert targets are written into the Alert workflow itself, so alerts still go out when
@@ -128,6 +152,8 @@ using the SQL read straight out of the workflow files:
 PASS same lead event x3 is processed once  [is_new=[True, False, False], hits=3]
 PASS 3 simultaneous copies: exactly one wins
 PASS first reply reserved once out of 3 attempts
+PASS a repeated GHL confirmation changes nothing
+PASS an email GHL never confirms raises an alert
 PASS booking event x3 handled once
 PASS reschedule kills old reminders, queues new ones
 PASS out-of-order old event is ignored
@@ -136,8 +162,23 @@ PASS after takeover, even a brand-new message is refused
 PASS watchdog flags a lead with no reply after 5 min
 PASS the same alert is delivered once, not every 5 minutes
 ...
-23/23 guarantees hold
+24/24 guarantees hold
 ```
+
+### Tested live
+
+All of it was also run end to end in the real n8n and GoHighLevel accounts:
+
+| Case | What happened |
+|---|---|
+| Meta lead | Gemini: qualified · 95; contact and deal created in GHL; booking-link email in the inbox **16 seconds** after opt-in |
+| Same lead sent 3 times at once | event seen 3 times, processed once: 1 lead, 1 email |
+| Booked through the email link | deal → Call Booked, confirmation email, reminders queued, chase cancelled |
+| Rescheduled in GHL | appointment version 2, the 2 old reminders cancelled, 2 new ones queued, deal → Call Rescheduled |
+| Cancelled, then booked again | reminders killed, re-book email sent, re-book sequence stopped by the new booking |
+| Marked no-show | deal → No-Show-Re-book, 3-step re-book sequence queued |
+| Team member replied in GHL | automation paused, queue cancelled, `human-takeover` tag, alert email |
+| Lead with no email or phone | alert email |
 
 ---
 
@@ -156,7 +197,7 @@ timeline 10. It returns a label, the score and a one-line reason. The full rules
 
 | Result | Rule | What happens |
 |---|---|---|
-| Qualified | score ≥ 70, no disqualifier | booking link by SMS and email within ~1 min, chase at +4h, +1d, +3d |
+| Qualified | score ≥ 70, no disqualifier | booking link by email within seconds, chase at +4h, +1d, +3d |
 | Needs review | 40 to 69, budget $2k to $5k, 500+ staff, missing or odd answers, or AI unavailable | short holding reply, team pinged, watchdog nags after 2h |
 | Not qualified | score < 40, or B2C, job seeker, vendor, budget under $2k | one polite email, deal marked lost |
 
@@ -175,8 +216,8 @@ can't change the rules.
 | Cancelled | SMS, then email | immediately, then +2 days |
 | No-show re-book | SMS, email, SMS | +15 minutes, +1 day, +3 days. Stops when re-booked |
 
-**Email-only mode.** SMS needs a phone number in GHL (Settings → Phone System). Without
-one, set `SMS_ENABLED` to `false` in the `settings` table: every SMS step whose email twin
+**Email-only mode (what runs now).** SMS needs a phone number in GHL (Settings → Phone
+System), and the shared sub-account has none, so `SMS_ENABLED` is `false`: every SMS step whose email twin
 goes out at the same moment is dropped, and the rest (2h reminder, chase steps, re-book
 steps) are sent as emails with the same wording. Timings and dedupe rules stay the same.
 Set it back to `true` once a number is connected.
@@ -186,8 +227,9 @@ in one place (the `Render template` node in `02-send-message`).
 
 ### Pipeline stages (GHL)
 
-New Lead → Needs Review → Qualified – Link Sent → Call Booked → Call Rescheduled →
-Showed. The side stages are Not Qualified, Call Cancelled and No-Show – Re-book.
+Pipeline **SG- Speed to lead**: New Lead → Needs review → Qualified- link sent →
+Call Booked → Call Rescheduled → Showed. The side stages are Not Qualified (deal lost),
+Call Canceled and No-Show-Re-book.
 
 ---
 
@@ -223,29 +265,27 @@ Monthly costs are spread across the days of the month, so any date range adds up
 
 ## Setup
 
-1. **Postgres:** run `sql/schema.sql` (Supabase, Neon or any Postgres 13+), then fill the
-   `settings` table with your GHL IDs and booking link. To load the spend sheet, run
+1. **Postgres:** run `sql/schema.sql` (Supabase, Neon or any Postgres 13+). To load the
+   spend sheet, run
    `\copy ad_spend (date, source, line_item, amount_usd) FROM 'data/ad-spend.csv' CSV HEADER`.
 2. **GoHighLevel:**
-   - Create the pipeline stages above.
-   - Create the custom fields `lead_score`, `qualification`, `qualification_reason` and `lead_source`.
-   - Create a Private Integration token with the contacts, opportunities, conversations and
-     calendars scopes.
-   - Point the appointment and message webhooks (marketplace app, or workflow Webhook
-     actions) at `/webhook/stl/appointment` and `/webhook/stl/message`.
-3. **n8n credentials:**
-   - `STL Postgres`
-   - `GHL Private Integration`: Header Auth, `Authorization: Bearer <token>`
+   - Create the pipeline, a booking calendar and the 4 `SG-` custom fields.
+   - Build the 5 GHL workflows in the table above. The two Inbound Webhook triggers give you
+     two URLs; send one sample request to each so GHL can map the fields (mapping
+     reference: `email`).
+   - If the account has no phone number, keep email-only mode (`SMS_ENABLED = false`).
+3. **Settings table:** fill in `GHL_HOOK_CONTACT`, `GHL_HOOK_EMAIL` (the two Inbound Webhook
+   URLs), `BOOKING_LINK`, `TEAM_TIMEZONE` and `AI_MODEL`.
+4. **n8n credentials:**
+   - `STL Postgres` (for Supabase, use the Session pooler host, SSL *require*)
    - `Gemini API`: Header Auth, `x-goog-api-key: <key>` (free key from Google AI Studio)
-   - `Alerts SMTP`
-4. **Import:** run `N8N_URL=… N8N_API_KEY=… python3 scripts/deploy_to_n8n.py`. It creates
-   all 9 workflows and wires the sub-workflow and error-workflow IDs. Select the credentials
-   once, then run again with `--activate`. To import by hand instead, upload each JSON file,
-   then pick the sub-workflow in each "Execute Workflow" node and the error workflow in
-   Settings.
-5. **Alerts:** set the Slack webhook in `06-alert` → `Alert targets`, the email addresses in
-   its `Email` node, and your Healthchecks.io URL in `08-watchdog`.
-6. **Meta:** point the Lead Ads webhook at `/webhook/stl/lead/meta` (the GET handshake is
+   - `Alerts SMTP` (a Gmail app password works)
+5. **Import:** run `N8N_URL=… N8N_API_KEY=… python3 scripts/deploy_to_n8n.py`. It creates
+   all 10 workflows, publishes the sub-workflows and the error handler first (n8n 2.x needs
+   that), and wires the IDs. Select the credentials once, then run again with `--activate`.
+6. **Alerts:** set the email addresses in `06-alert` → `Email` (and optionally a Slack
+   webhook in `Alert targets`), and your Healthchecks.io URL in `08-watchdog`.
+7. **Meta:** point the Lead Ads webhook at `/webhook/stl/lead/meta` (the GET handshake is
    handled). No ad account is needed to test: `scripts/simulate.sh` sends Meta-shaped data.
 
 The workflow JSON is generated from `scripts/build_workflows.py`, so edit that and run it
@@ -255,43 +295,39 @@ again rather than hand-editing the JSON.
 
 ## Loom script
 
-About 8 minutes. Set `export N8N=https://<your-n8n>/webhook` first, with GHL, n8n
-executions and Slack open side by side.
+About 8 minutes. Have open: the diagram page, n8n (Executions), GoHighLevel (the SG- Speed
+to lead pipeline and the contact), and Gmail. The test leads use `sirineghader+…@gmail.com`
+addresses, so every email lands in one inbox.
 
 **Part 1: one lead from opt-in to booked call (3 min)**
 
-1. Start on the dashboard. "The owner's question is answered in the first sentence:
-   referrals bring the cheapest booked calls at $243. Meta has the cheapest leads, but 43%
-   of its calls no-show, so each show costs $577."
-2. Run `./simulate.sh meta`. Show the n8n execution: the webhook, normalize, dedupe, GHL
-   contact tagged `source-meta`, and the deal in New Lead. Then Gemini returns
-   `qualified · 86 · "B2B SaaS, 25-50 staff, $8-15k/mo, founder, starting this month."`
-3. Show the phone or the GHL conversation: the SMS and email with the booking link, about
-   60 seconds after opt-in. Show the deal in *Qualified – Link Sent* and the score fields on
-   the contact.
-4. Book a slot through the booking link. Show the deal move to *Call Booked*, the
-   confirmation SMS, and 3 reminder rows queued (24h email, 24h SMS, 2h SMS). The booking
-   chase rows are now cancelled.
-5. Quickly show the other two outcomes: `./simulate.sh website` gives Needs Review, a
-   holding reply and a Slack ping. `./simulate.sh referral` (a nail salon) gives Not
-   Qualified and one polite email.
+1. Diagram, part 1: "A lead comes in from one of three sources, already tagged with its
+   source. Gemini scores it against the ideal client. Qualified leads get the booking link
+   in seconds."
+2. Send a Meta test lead (`simulate.sh meta`). In n8n, open the *Lead intake* execution:
+   webhook, dedupe, GHL contact and deal, Gemini's answer (for example
+   `qualified · 95 · "B2B SaaS, 25-50 staff, $8k-$15k/mo budget, founder, starting this month"`).
+3. GHL: the contact with tags `source-meta` and `ai-qualified`, the 4 SG fields, and the deal
+   in *Qualified- link sent*.
+4. Gmail: the booking-link email, about 15 seconds after opt-in.
+5. Book through the link with the lead's email. GHL: the deal moves to *Call Booked*.
+   Gmail: the confirmation. "Reminders are now queued for 24 hours and 2 hours before the
+   call, and the follow-up chase is cancelled."
 
 **Part 2: the real work (5 min)**
 
-1. **Duplicates:** run `./simulate.sh dupes`. Show 3 executions: one runs the flow, two stop
-   at "Duplicate: stop here". In `processed_events` the row shows `hits = 3`, and only one
-   SMS arrives.
-2. **Reschedule:** move the appointment in GHL (or run `./simulate.sh reschedule …`). The
-   deal moves to *Call Rescheduled*, and the old reminders show `cancelled`, "rescheduled,
-   old reminders killed". New reminders appear with version 2.
-3. **Cancel and no-show:** run `cancel`. The deal moves to *Call Cancelled* and the re-book
-   SMS goes out. Then run `noshow`. The deal moves to *No-Show – Re-book* and the 3-step
-   re-book sequence is queued.
-4. **Human reply:** reply by hand from GHL (or `./simulate.sh human <contactId>`). Slack
-   shows "Automation is now OFF for this lead". The contact gets the `human-takeover` tag and
-   pending messages go to `cancelled`. Re-run a booking event: the reminders are queued but
-   skipped with "automation paused".
-5. **Failures:** run `./simulate.sh broken` for an instant alert. Then deactivate the
-   scheduler and show the watchdog's "messages are overdue" alert. Break the Gemini key
-   and show the lead still getting a holding reply, plus an "AI failed" alert.
-6. End on `python3 scripts/test_guarantees.py`: 23/23 guarantees hold.
+1. **Duplicates:** send the same lead 3 times at once (`simulate.sh dupes`). n8n: 3
+   executions, one runs the whole flow, two stop at "Duplicate: stop here". Gmail: one email.
+2. **Reschedule:** move the appointment in GHL Calendars. The deal moves to *Call
+   Rescheduled* and a "new time" email arrives. "The old reminders were cancelled and new
+   ones queued for the new time."
+3. **Cancel, then no-show:** cancel the appointment in GHL: *Call Canceled* and a "want a
+   new time?" email. Book again, then mark it *No Show*: *No-Show-Re-book*, and the 3-step
+   re-book sequence starts (first email 15 minutes later).
+4. **Human reply:** reply to the lead by hand from GHL Conversations. The contact gets the
+   `human-takeover` tag and an alert email arrives: "Automation is now OFF for this lead".
+5. **Failures:** send a lead with no email or phone (`simulate.sh broken`): an alert email
+   arrives straight away. "Crashes, refused messages and silent gaps, like an email GHL
+   never confirms, all reach my inbox."
+6. End on the dashboard: "Referrals bring the cheapest booked calls: $243 each. Meta has the
+   cheapest leads, but 43% of its calls no-show, so each show costs $577."

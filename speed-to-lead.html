@@ -19,7 +19,7 @@
       <a class="back-link" href="index.html#projects">← Back to portfolio</a>
       <p class="eyebrow">Case study · n8n + GoHighLevel + Gemini</p>
       <h1>Speed-to-lead revenue engine</h1>
-      <p class="tagline">Every lead answered in about a minute, and a scorecard that shows which source is worth the money.</p>
+      <p class="tagline">Every lead answered in under 20 seconds, and a scorecard that shows which source is worth the money.</p>
     </div>
   </header>
 
@@ -33,7 +33,7 @@
           half of booked calls no-showed, and nobody knew what a booked call cost.
         </p>
         <p>
-          I built the system that replies in minutes, qualifies each lead with AI, books the call,
+          I built the system that replies in seconds, qualifies each lead with AI, books the call,
           sends reminders and chases every lead. It also shows the owner which source brings the
           cheapest booked calls.
         </p>
@@ -54,8 +54,8 @@
             <span>Qualified, Not Qualified or Needs Review, with a 0-100 score and a one-line reason, against a written ideal-client profile.</span>
           </li>
           <li>
-            <strong>The reply goes out in about a minute</strong>
-            <span>Qualified leads get a booking link by SMS and email. Others get a polite reply, and the team is pinged for anything that needs review.</span>
+            <strong>The reply goes out in seconds</strong>
+            <span>Qualified leads get a booking link by email. Others get a polite reply, and the team is pinged for anything that needs review.</span>
           </li>
           <li>
             <strong>Booked, rescheduled, cancelled or no-show</strong>
@@ -77,9 +77,10 @@
           <li><strong>The same event can arrive 3 times.</strong> A database lock lets exactly one copy through, and every message is reserved in a send ledger before it goes out, so nobody gets the same message twice.</li>
           <li><strong>A reschedule kills the old reminders.</strong> Reminders are tied to a version of the appointment and re-checked right before sending.</li>
           <li><strong>A human reply stops everything.</strong> Any message the system didn't send pauses all automation for that lead.</li>
-          <li><strong>No silent errors.</strong> Crashes, refused messages and quiet problems (like a lead with no reply after 5 minutes) all reach Slack and email.</li>
+          <li><strong>No silent errors.</strong> Crashes, refused messages and quiet problems (like a lead with no reply after 5 minutes) all reach my inbox. An email only counts as sent when GoHighLevel confirms it.</li>
         </ul>
-        <p>23 automated checks prove each guarantee against a real database.</p>
+        <p>24 automated checks prove each guarantee against a real database, and every case was then run live in n8n and GoHighLevel.</p>
+        <p>One real-world twist: the shared GoHighLevel account doesn't allow API tokens, so n8n talks to GoHighLevel through GoHighLevel's own Automation. n8n decides what should happen; GoHighLevel workflows create the contact, move the deal and send the email, then report back.</p>
       </div>
     </section>
 
@@ -90,7 +91,7 @@
         <div class="facts">
           <div class="fact">
             <span class="label">Automations</span>
-            <span class="value">9 n8n workflows</span>
+            <span class="value">10 n8n + 5 GHL workflows</span>
           </div>
           <div class="fact">
             <span class="label">AI</span>
@@ -98,7 +99,7 @@
           </div>
           <div class="fact">
             <span class="label">Reply time</span>
-            <span class="value">~1 minute, 24/7</span>
+            <span class="value">~15 seconds, 24/7</span>
           </div>
           <div class="fact">
             <span class="label">Tools</span>
