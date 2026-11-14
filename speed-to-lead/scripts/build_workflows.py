@@ -665,11 +665,18 @@ const raw = String(a.appointmentStatus || a.appoinmentStatus || a.status || b.st
 let status = { confirmed: 'booked', booked: 'booked', new: 'booked', cancelled: 'cancelled', canceled: 'cancelled',
                noshow: 'noshow', 'no_show': 'noshow', 'no-show': 'noshow', showed: 'showed', invalid: 'cancelled' }[raw];
 if (b.type === 'AppointmentDelete') status = 'cancelled';
-const id = a.id || a.appointmentId || b.appointment_id;
+// In a GHL workflow webhook, calendar.id is the CALENDAR; the appointment is calendar.appointmentId.
+const id = a.appointmentId || (b.appointment && b.appointment.id) || b.appointment_id;
 // Our contact key is the lead's email (or phone), the same value GHL matches contacts on.
 const email = b.email || b.contact?.email || a.email;
 const contact = String(email || b.phone || b.contact?.phone || a.contactId || b.contact_id || b.contactId || '').toLowerCase();
-const start = new Date(a.startTime || a.start_time || b.start_time).toISOString();
+// Workflow webhooks send local wall time without an offset ("2026-11-16T08:00:00") plus the
+// booker's timezone; read it in that zone, then store UTC.
+const rawStart = String(a.startTime || a.start_time || b.start_time || '');
+const tz = a.selectedTimezone || b.timezone || 'UTC';
+const start = /(Z|[+-]\d\d:?\d\d)$/.test(rawStart)
+  ? new Date(rawStart).toISOString()
+  : DateTime.fromISO(rawStart, { zone: tz }).toUTC().toISO();
 const eventAt = new Date(a.dateUpdated || b.dateUpdated || b.event_at || Date.now()).toISOString();
 if (!id || !contact || !status) throw new Error(`Unrecognised appointment payload: ${JSON.stringify(b).slice(0, 500)}`);
 return { json: {
